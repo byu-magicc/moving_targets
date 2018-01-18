@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>moving_targets</name>
+  <version>0.0.0</version>
+  <description>Simulation package containing moving targets for vision algorithm testing in Gazebo</description>
+
+  <maintainer email="parkerclusk@gmail.com">Parker Lusk</maintainer>
+  <license>BSD</license>
+
+  <depend>gazebo_ros</depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <gazebo_ros gazebo_model_path="${prefix}/models" />
+    <!-- <gazebo_ros gazebo_model_path="${prefix}/.." /> -->
+  </export>
+</package>

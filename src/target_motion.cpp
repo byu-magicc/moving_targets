@@ -95,11 +95,11 @@ namespace gazebo
     void OnUpdate(const common::UpdateInfo& _info)
     {
       // Apply forces to the model (using P control) to achieve the commanded linear and angular velocities.
-      math::Vector3 linearVel = link->GetRelativeLinearVel();
-      math::Vector3 angularVel = link->GetRelativeAngularVel();
+      math::Vector3 linearVel = link->GetWorldLinearVel();
+      math::Vector3 angularVel = link->GetWorldAngularVel();
       double Fx = (2 - linearVel.x)*kpXY;
       double Fy = (0 - linearVel.y)*kpXY;
-      double Fw = (0 - angularVel.z)*kpOmega;
+      double Fw = (1 - angularVel.z)*kpOmega;
       saturate2(Fx, Fy, maxFXY);
       saturate(Fw, maxFOmega);
 

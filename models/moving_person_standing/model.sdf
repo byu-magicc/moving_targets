@@ -18,7 +18,7 @@
     <joint type="fixed" name="motion_connection">
       <pose>0 0 -0.95 0 0 0</pose>
       <parent>feet</parent>
-      <child>person_walking::link</child>
+      <child>person_standing::link</child>
     </joint>
 
     <plugin name="TargetMotion" filename="libTargetMotion.so">

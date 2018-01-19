@@ -94,22 +94,61 @@ namespace gazebo
     // Called by the world update start event
     void OnUpdate(const common::UpdateInfo& _info)
     {
-      // Apply forces to the model (using P control) to achieve the commanded linear and angular velocities.
-      math::Vector3 linearVel = link->GetWorldLinearVel();
-      math::Vector3 angularVel = link->GetWorldAngularVel();
-      double Fx = (2 - linearVel.x)*kpXY;
-      double Fy = (0 - linearVel.y)*kpXY;
-      double Fw = (1 - angularVel.z)*kpOmega;
-      saturate2(Fx, Fy, maxFXY);
-      saturate(Fw, maxFOmega);
 
-      link->AddForceAtRelativePosition(math::Vector3(Fx, Fy, 0), math::Vector3(0, 0, 0));
-      link->AddTorque(math::Vector3(0, 0, Fw));
+      // gzmsg << "\n\n";
+      // gzmsg << "GetRelativePose: " << link->GetRelativePose() << "\n";
+      // gzmsg << "GetInitialRelativePose: " << link->GetInitialRelativePose() << "\n";
+      // gzmsg << "GetWorldCoGPose: " << link->GetWorldCoGPose() << "\n";
+      // gzmsg << "GetWorldInertialPose: " << link->GetWorldInertialPose() << "\n";
+      // gzmsg << "GetWorldPose: " << link->GetWorldPose() << "\n";
+
+      // gzmsg << "\n\n";
+      // gzmsg << "GetRelativeLinearVel: " << link->GetRelativeLinearVel() << "\n";
+      // gzmsg << "GetWorldCoGLinearVel: " << link->GetWorldCoGLinearVel() << "\n";
+      // gzmsg << "GetWorldLinearVel: " << link->GetWorldLinearVel() << "\n";
+
+      // gzmsg << "\n\n";
+      // gzmsg << "GetRelativeAngularVel: " << link->GetRelativeAngularVel() << "\n";
+      // gzmsg << "GetWorldAngularVel: " << link->GetWorldAngularVel() << "\n";
+
+      // gzmsg << "=======================================================================================\n\n";
+
+      math::Vector3 vel = PosController(math::Vector3(20, 20, 0));
+
+
+      VelController(vel);
+    }
+
+    math::Vector3 PosController(const math::Vector3& pos)
+    {
+      math::Vector3 currentPos = link->GetWorldPose().pos;
+      math::Vector3 currentRot = link->GetWorldPose().rot.GetAsEuler();
+
+      double Vx = (pos.x - currentPos.x)*1;
+      double Vy = (pos.y - currentPos.y)*1;
+      double w =  (pos.z - currentRot.z)*0.1;
+
+      return math::Vector3(Vx, Vy, w);
+
+    }
+
+    void VelController(const math::Vector3& vel)
+    {
+      // Apply forces to the model (using P control) to achieve the commanded linear and angular velocities.
+      math::Vector3 linearVel = link->GetRelativeLinearVel();
+      double Fx = (vel.x - linearVel.x)*kpXY;
+      double Fy = (vel.y - linearVel.y)*kpXY;
+      saturate2(Fx, Fy, maxFXY);
+      link->AddRelativeForce(math::Vector3(Fx, Fy, 0));
+
+
+      math::Vector3 angularVel = link->GetRelativeAngularVel();
+      double Fw = (vel.z - angularVel.z)*kpOmega;
+      saturate(Fw, maxFOmega);
+      link->AddRelativeTorque(math::Vector3(0, 0, Fw));
 
       // Artificially add friction
-      math::Vector3 vel = link->GetWorldLinearVel();
-      math::Vector3 friction_force = -vel*friction;
-      link->AddForce(friction_force);
+      link->AddForce( -link->GetWorldLinearVel()*friction );
     }
 
 

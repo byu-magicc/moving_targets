@@ -113,10 +113,10 @@ namespace gazebo
 
       // gzmsg << "=======================================================================================\n\n";
 
-      math::Vector3 vel = PosController(math::Vector3(20, 20, 0));
+      math::Vector3 vel = PosController(math::Vector3(10, 10, 0));
 
 
-      VelController(vel);
+      VelController(vel.x, vel.z);
     }
 
     math::Vector3 PosController(const math::Vector3& pos)
@@ -124,31 +124,43 @@ namespace gazebo
       math::Vector3 currentPos = link->GetWorldPose().pos;
       math::Vector3 currentRot = link->GetWorldPose().rot.GetAsEuler();
 
-      double Vx = (pos.x - currentPos.x)*1;
-      double Vy = (pos.y - currentPos.y)*1;
-      double w =  (pos.z - currentRot.z)*0.1;
+      // Calculate error from current position to goal position
+      math::Vector3 e = pos - currentPos;
 
-      return math::Vector3(Vx, Vy, w);
+      // Distance control
+      double d = sqrt( e.x*e.x + e.y*e.y );
+      double v = d*1;
 
+      // heading control
+      double goalHeading = atan2(e.y, e.x);
+      double angleDiff = goalHeading - currentRot.z;
+      
+      // angle wrapping to ensure angleDiff \in [-pi, pi]
+      if (angleDiff > M_PI) angleDiff -= 2*M_PI;
+      if (angleDiff < -M_PI) angleDiff += 2*M_PI;
+
+      double w = angleDiff*4;
+
+      return math::Vector3(v, 0, w);
     }
 
-    void VelController(const math::Vector3& vel)
+    void VelController(double vel, double omega)
     {
       // Apply forces to the model (using P control) to achieve the commanded linear and angular velocities.
       math::Vector3 linearVel = link->GetRelativeLinearVel();
-      double Fx = (vel.x - linearVel.x)*kpXY;
-      double Fy = (vel.y - linearVel.y)*kpXY;
-      saturate2(Fx, Fy, maxFXY);
-      link->AddRelativeForce(math::Vector3(Fx, Fy, 0));
+      double Fx = (vel - linearVel.x)*kpXY;
+      saturate(Fx, maxFXY);
+      link->AddRelativeForce(math::Vector3(Fx, 0, 0));
 
 
       math::Vector3 angularVel = link->GetRelativeAngularVel();
-      double Fw = (vel.z - angularVel.z)*kpOmega;
+      double Fw = (omega - angularVel.z)*kpOmega;
       saturate(Fw, maxFOmega);
       link->AddRelativeTorque(math::Vector3(0, 0, Fw));
 
       // Artificially add friction
       link->AddForce( -link->GetWorldLinearVel()*friction );
+      link->AddTorque( -link->GetWorldAngularVel()*friction );
     }
 
 

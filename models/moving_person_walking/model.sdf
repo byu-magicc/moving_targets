@@ -28,7 +28,7 @@
       <kpOmega>10000</kpOmega>
       <maxFXY>10000</maxFXY>
       <maxFOmega>10000</maxFOmega>
-      <friction>5</friction>
+      <friction>500</friction>
     </plugin>
 
   </model>

@@ -3,8 +3,7 @@
 namespace motion {
 
 UnicyclePlanner::UnicyclePlanner() {
-    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0.5, 0, -200, 200));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(10, 0, 0, -200, 200));
+
 }
 
 // ----------------------------------------------------------------------------
@@ -21,6 +20,9 @@ void UnicyclePlanner::generateWaypoints(const waypoints_t& waypoints, const coor
     type_ = WAYPOINTS;
     waypoints_ = waypoints;
     vel_ = vel;
+
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0.5, 0, -30, 30));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0, 0, -30, 30));
 }
 
 // ----------------------------------------------------------------------------
@@ -29,6 +31,54 @@ void UnicyclePlanner::generateCircle(double radius, const coord_t& center) {
     type_ = CIRCLE;
     r_ = radius;
     center_ = center;
+
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1.5, 0.01, 0, -200, 200));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(2, 0, 0, -200, 200));
+
+    robotpath_.clear();
+    double dt = 0.002;
+    int Nsteps = std::ceil((2*M_PI)/dt);
+    for (int i=0; i<Nsteps; i++) {
+        double ang = i*dt;
+        coord_t q = {cos(ang), sin(ang)};
+        robotpath_.push_back(q*r_ + center_);
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+void UnicyclePlanner::generateLemniscate(double a, const coord_t& center) {
+    type_ = LEMNISCATE;
+    a_ = a;
+    center_ = center;
+
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(3, 0.15, 0, -200, 200));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -200, 200));
+
+    robotpath_.clear();
+    double dt = 0.0002;
+    int Nsteps = std::ceil((M_PI/2.0)/dt); // length(-pi/4:dt:pi/4)
+    for (int i=0; i<Nsteps; i++) {
+        double ang = i*dt - M_PI/4.0;
+
+        coord_t q = {cos(ang), sin(ang)};
+
+        double x = a_*cos(ang) * sqrt(2*cos(2*ang));
+        double y = a_*sin(ang) * sqrt(2*cos(2*ang));
+
+        robotpath_.push_back({x + center_.first, y + center_.second});
+    }
+
+    for (int i=Nsteps; i>0; i--) {
+        double ang = i*dt - M_PI/4.0;
+
+        coord_t q = {cos(ang), sin(ang)};
+
+        double x = a_*cos(ang) * sqrt(2*cos(2*ang));
+        double y = a_*sin(ang) * sqrt(2*cos(2*ang));
+
+        robotpath_.push_back({-x + center_.first, -y + center_.second});
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -89,14 +139,6 @@ void UnicyclePlanner::regenerateTrajectory(double dt) {
 
     if (type_ == WAYPOINTS) {
         robotpath_ = mstraj(waypoints_, vel_, dt);
-    } else if (type_ = CIRCLE) {
-        robotpath_.clear();
-        int Nsteps = std::ceil((2*M_PI)/dt);
-        for (int i=0; i<Nsteps; i++) {
-            double ang = i*dt;
-            coord_t q = {cos(ang), sin(ang)};
-            robotpath_.push_back(q*r_ + center_);
-        }
     }
 
 }

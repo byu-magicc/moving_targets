@@ -80,8 +80,12 @@ namespace gazebo
       unicycle->generateWaypoints(waypoints, vel);
 
       double radius = 2;
-      motion::coord_t center = {0, 0};
-      unicycle->generateCircle(radius, center);
+      motion::coord_t center = {5, 5};
+      // unicycle->generateCircle(radius, center);
+
+      double a = 2;
+      center = {0, 0};
+      // unicycle->generateLemniscate(a, center);
 
       // Listen to the update event. This event is broadcast every simulation iteration.
       updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
@@ -122,12 +126,14 @@ namespace gazebo
       math::Vector3 linearVel = link->GetRelativeLinearVel();
       double Fx = (vel - linearVel.x)*kpXY;
       saturate(Fx, maxFXY);
+      if (Fx == maxFXY) gzerr << "XY saturating!!\n";
       link->AddRelativeForce(math::Vector3(Fx, 0, 0));
 
       // Heading rate --> angular velocity
       math::Vector3 angularVel = link->GetRelativeAngularVel();
       double Fw = (omega - angularVel.z)*kpOmega;
       saturate(Fw, maxFOmega);
+      if (Fw == maxFOmega) gzerr << "Omega saturating!!\n";
       link->AddRelativeTorque(math::Vector3(0, 0, Fw));
 
       // // Artificially add friction

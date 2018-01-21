@@ -26,7 +26,7 @@ namespace motion {
         void generateWaypoints(const waypoints_t& waypoints, const coord_t& vel);
         void generateCircle(double radius, const coord_t& center);
         void generateSinusoidal();
-        void generateLemniscate();
+        void generateLemniscate(double a, const coord_t& center);
 
 
     private:
@@ -53,6 +53,10 @@ namespace motion {
             // CIRCLE
             double r_;
             coord_t center_;
+
+            // LEMNISCATE
+            double a_;
+            // coord_t center_;
 
         // Motion controllers
         double speedControl(double dt, double ex, double ey);
@@ -88,6 +92,8 @@ namespace motion {
                 double u = u_unsat; if (u_unsat > max_) u = max_; if (u_unsat < min_) u = min_;
                 // integrator anti-windup
                 if (ki_ != 0) int_ += (dt/ki_)*(u-u_unsat);
+                // reset if not finite
+                if (!std::isfinite(u)) { diff_ = 0; int_ = 0; u = 0; }
                 // return command signal
                 return u;
             }

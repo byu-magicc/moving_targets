@@ -76,7 +76,12 @@ namespace gazebo
 
 
       motion::waypoints_t waypoints = {{5,5},{10,8},{7,0},{15,-3},{15,4},{-2,4}};
-      unicycle->generateWaypoints(waypoints);
+      motion::coord_t vel = {4, 4};
+      unicycle->generateWaypoints(waypoints, vel);
+
+      double radius = 2;
+      motion::coord_t center = {0, 0};
+      unicycle->generateCircle(radius, center);
 
       // Listen to the update event. This event is broadcast every simulation iteration.
       updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));

@@ -17,38 +17,49 @@ namespace motion {
     class UnicyclePlanner
     {
     public:
-        enum Trajectory { WAYPOINT, CIRCLE, SINUSOIDAL, LEMNISCATE };
-
         UnicyclePlanner();
 
         void updateState(double x, double y, double theta);
 
         void getCommands(double dt, double& v, double& w);
 
-        void generateWaypoints(const waypoints_t& waypoints);
-        void generateCircle();
+        void generateWaypoints(const waypoints_t& waypoints, const coord_t& vel);
+        void generateCircle(double radius, const coord_t& center);
         void generateSinusoidal();
         void generateLemniscate();
 
 
     private:
+        // available types of trajectories
+        enum Trajectory { WAYPOINTS, CIRCLE, SINUSOIDAL, LEMNISCATE };
+
         // unicycle state in the world frame
         double x_ = 0;
         double y_ = 0;
         double theta_ = 0;
 
         // trajectory
+        Trajectory type_;
         path_t robotpath_;
         int traj_idx_ = 0;
 
         // parameters
         double d_ = 1;    // look-ahead distance for speed control
 
+            // WAYPOINTS
+            waypoints_t waypoints_;
+            coord_t vel_;
+
+            // CIRCLE
+            double r_;
+            coord_t center_;
+
         // Motion controllers
         double speedControl(double dt, double ex, double ey);
         double headingControl(double dt, double ex, double ey);
 
         // Trajectory generation
+        void regenerateTrajectory(double dt);
         double getCurrentGoalFromTrajectory(double& gx, double& gy);
         path_t mstraj(const waypoints_t& segments, const coord_t& qdmax, double dt);
 

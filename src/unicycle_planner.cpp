@@ -4,7 +4,7 @@ namespace motion {
 
 UnicyclePlanner::UnicyclePlanner() {
     speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0.5, 0, -200, 200));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0, 0, -200, 200));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(10, 0, 0, -200, 200));
 }
 
 // ----------------------------------------------------------------------------
@@ -17,18 +17,25 @@ void UnicyclePlanner::updateState(double x, double y, double theta) {
 
 // ----------------------------------------------------------------------------
 
-void UnicyclePlanner::generateWaypoints(const waypoints_t& waypoints) {
-    coord_t vel = {2, 2};
-    robotpath_ = mstraj(waypoints, vel, 0.002);
+void UnicyclePlanner::generateWaypoints(const waypoints_t& waypoints, const coord_t& vel) {
+    type_ = WAYPOINTS;
+    waypoints_ = waypoints;
+    vel_ = vel;
+}
+
+// ----------------------------------------------------------------------------
+
+void UnicyclePlanner::generateCircle(double radius, const coord_t& center) {
+    type_ = CIRCLE;
+    r_ = radius;
+    center_ = center;
 }
 
 // ----------------------------------------------------------------------------
 
 void UnicyclePlanner::getCommands(double dt, double& v, double& w) {
 
-    motion::waypoints_t waypoints = {{5,5},{10,8},{7,0},{15,-3},{15,4},{-2,4}};
-    coord_t vel = {4, 4};
-    robotpath_ = mstraj(waypoints, vel, dt);
+    regenerateTrajectory(dt);
 
     // Select the current goal position from the current trajectory.
     // Think of this as moving the carrot.
@@ -78,8 +85,35 @@ double UnicyclePlanner::headingControl(double dt, double ex, double ey) {
 
 // ----------------------------------------------------------------------------
 
+void UnicyclePlanner::regenerateTrajectory(double dt) {
+
+    if (type_ == WAYPOINTS) {
+        robotpath_ = mstraj(waypoints_, vel_, dt);
+    } else if (type_ = CIRCLE) {
+        robotpath_.clear();
+        int Nsteps = std::ceil((2*M_PI)/dt);
+        for (int i=0; i<Nsteps; i++) {
+            double ang = i*dt;
+            coord_t q = {cos(ang), sin(ang)};
+            robotpath_.push_back(q*r_ + center_);
+        }
+    }
+
+}
+
+// ----------------------------------------------------------------------------
+
 double UnicyclePlanner::getCurrentGoalFromTrajectory(double& gx, double& gy) {
-    coord_t pos = robotpath_[traj_idx_++];
+
+    coord_t pos;
+    if (traj_idx_ >= robotpath_.size()) {
+        pos = robotpath_[robotpath_.size()-1];
+        traj_idx_ = 0;
+    } else {
+        pos = robotpath_[traj_idx_++];
+    }
+
+    
     gx = pos.first;
     gy = pos.second;
 

@@ -26,8 +26,8 @@
       <baseLink>feet</baseLink>
       <kpXY>50000</kpXY>
       <kpOmega>10000</kpOmega>
-      <maxFXY>10000</maxFXY>
-      <maxFOmega>10000</maxFOmega>
+      <maxFXY>6000</maxFXY>
+      <maxFOmega>6000</maxFOmega>
       <friction>5</friction>
     </plugin>
 

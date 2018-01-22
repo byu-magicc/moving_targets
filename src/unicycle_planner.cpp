@@ -24,7 +24,7 @@ void UnicyclePlanner::goToPoint(double x, double y) {
     d_ = 0;
 
     speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(0.5, 0, 0, -max_vel_, max_vel_));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(8, 0, 0, -max_ang_vel_, max_ang_vel_));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(4, 0, 0, -max_ang_vel_, max_ang_vel_));
 }
 
 // ----------------------------------------------------------------------------
@@ -34,8 +34,12 @@ void UnicyclePlanner::generateWaypoints(const waypoints_t& waypoints, const coor
     waypoints_ = waypoints;
     vel_ = vel;
 
-    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0.5, 0, -30, 30));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(6, 0, 0, -30, 30));
+    d_ = 0;
+
+    max_vel_ = 5;
+    max_ang_vel_ = (2*M_PI)/3.0;
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1, 0.1, 0, -max_vel_, max_vel_));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -max_ang_vel_, max_ang_vel_));
 }
 
 // ----------------------------------------------------------------------------
@@ -45,11 +49,15 @@ void UnicyclePlanner::generateCircle(double radius, const coord_t& center) {
     r_ = radius;
     center_ = center;
 
-    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1.5, 0.01, 0, -200, 200));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(2, 0, 0, -200, 200));
+    d_ = 0;
+
+    max_vel_ = 5;
+    max_ang_vel_ = (2*M_PI)/3.0;
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1, 0.1, 0, -max_vel_, max_vel_));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -max_ang_vel_, max_ang_vel_));
 
     robotpath_.clear();
-    double dt = 0.002;
+    double dt = 0.0015;
     int Nsteps = std::ceil((2*M_PI)/dt);
     for (int i=0; i<Nsteps; i++) {
         double ang = i*dt;
@@ -65,11 +73,15 @@ void UnicyclePlanner::generateLemniscate(double a, const coord_t& center) {
     a_ = a;
     center_ = center;
 
-    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(3, 0.15, 0, -200, 200));
-    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -200, 200));
+    d_ = 0;
+
+    max_vel_ = 5;
+    max_ang_vel_ = (2*M_PI)/3.0;
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1, 0.1, 0, -max_vel_, max_vel_));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -max_ang_vel_, max_ang_vel_));
 
     robotpath_.clear();
-    double dt = 0.0002;
+    double dt = 0.0015;
     int Nsteps = std::ceil((M_PI/2.0)/dt); // length(-pi/4:dt:pi/4)
     for (int i=0; i<Nsteps; i++) {
         double ang = i*dt - M_PI/4.0;
@@ -112,6 +124,8 @@ void UnicyclePlanner::getCommands(double dt, double& v, double& w) {
     // Generate the unicycle commands to achieve the goal position
     v = speedControl(dt, ex, ey);
     w = headingControl(dt, ex, ey);
+
+    // std::cout << "[getCommands] Velocity Command: " << v << std::endl;
 }
 
 // ----------------------------------------------------------------------------
@@ -123,6 +137,8 @@ double UnicyclePlanner::speedControl(double dt, double ex, double ey) {
     // calculate distance error using "look-ahead" distance. The purpose of
     // this is to help generate smoother commands
     double de = std::sqrt(ex*ex + ey*ey) - d_;
+
+    // std::cout << "[SpeedControl] Error: " << de << std::endl;
 
     // generate a speed command to regulate error to zero
     return speedPID_->compute(de, dt);
@@ -172,7 +188,7 @@ double UnicyclePlanner::getCurrentGoalFromTrajectory(double& gx, double& gy) {
     gx = pos.first;
     gy = pos.second;
 
-    std::cout << "[UnicyclePlanner] pos: (" << gx << ", " << gy << ")" << std::endl;
+    // std::cout << "[UnicyclePlanner] pos: (" << gx << ", " << gy << ")" << std::endl;
 }
 
 // ----------------------------------------------------------------------------

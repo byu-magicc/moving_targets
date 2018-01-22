@@ -80,13 +80,13 @@ namespace gazebo
 
       double radius = 2;
       motion::coord_t center = {5, 5};
-      // unicycle->generateCircle(radius, center);
+      unicycle->generateCircle(radius, center);
 
       double a = 2;
       center = {0, 0};
       // unicycle->generateLemniscate(a, center);
 
-      unicycle->goToPoint(20, -8.5);
+      // unicycle->goToPoint(4, -8.5);
 
       //
       // Initialize low-level PID controllers
@@ -133,21 +133,56 @@ namespace gazebo
       // Apply forces to the model (using P control) to achieve
       // the commanded linear and angular velocities.
 
+      // Check if robot has fallen down
+      if (link->GetWorldPose().pos.z > 0.03 || 
+          std::abs(link->GetWorldPose().rot.GetAsEuler().x) > 0.075 ||
+          std::abs(link->GetWorldPose().rot.GetAsEuler().y) > 0.075)
+      {
+        gzerr << "I've fallen and can't get up!\n";
+        // Help Mrs. Fletcher stand up
+        LifeCall();
+        return;
+      }
+
       // speed --> force in body x-axis
       double c = 2.0/vel; // inverse velocity clamp
       double linearVel_error = math::clamp(link->GetRelativeLinearVel().x - vel, -c, c);
       double Fx = forcePID.Update(linearVel_error, dt);
-      if (Fx == maxFXY) gzerr << "XY clamped (" << Fx << ") !!\n";
+      // if (Fx == maxFXY) gzerr << "XY clamped (" << Fx << ") !!\n";
       link->AddRelativeForce(math::Vector3(Fx, 0, 0));
 
       // Heading rate --> angular velocity
       double angularVel_error = link->GetRelativeAngularVel().z - omega;
       double Fw = torquePID.Update(angularVel_error, dt);
-      if (Fw == maxFOmega) gzerr << "Omega clamped (" << Fw << ") !!\n";
+      // if (Fw == maxFOmega) gzerr << "Omega clamped (" << Fw << ") !!\n";
       link->AddRelativeTorque(math::Vector3(0, 0, Fw));
 
-      gzmsg << "Linear Velocity (" << link->GetRelativeLinearVel().x << ") Error: " << vel - link->GetRelativeLinearVel().x << "\t" << "Force: " << Fx << "\n";
-      gzmsg << "Angular Velocity (" << link->GetRelativeAngularVel().z << ") Error: " << omega - link->GetRelativeAngularVel().z << "\t" << "Torque: " << Fw << "\n";
+      // gzmsg << "Linear Velocity (" << link->GetRelativeLinearVel().x << ") Error: " << vel - link->GetRelativeLinearVel().x << "\t" << "Force: " << Fx << "\n";
+      // gzmsg << "Angular Velocity (" << link->GetRelativeAngularVel().z << ") Error: " << omega - link->GetRelativeAngularVel().z << "\t" << "Torque: " << Fw << "\n";
+    }
+
+    // ------------------------------------------------------------------------
+
+    void LifeCall()
+    {
+      // start with the current pose
+      math::Pose resetPose = link->GetWorldPose();
+
+      // zero out the roll, pitch orientations
+      math::Vector3 euler = resetPose.rot.GetAsEuler();
+      euler.x = 0; euler.y = 0;
+      resetPose.rot.SetFromEuler(euler);
+
+      // teleport to a standing position
+      link->SetWorldPose(resetPose);
+
+      // Because we just teleported the model, reset the
+      // vel, accel, force, torque on the link ...
+      link->ResetPhysicsStates();
+
+      // ... and the PIDs
+      forcePID.Reset();
+      torquePID.Reset();
     }
 
     // ------------------------------------------------------------------------

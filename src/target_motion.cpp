@@ -59,34 +59,75 @@ namespace gazebo
       maxFOmega = getValueFromSdf("maxFOmega");
 
       //
-      // Connect to ROS
-      //
-
-      nh = ros::NodeHandle(model->GetName());
-
-      // Connect to subscribers
-      gzmsg << "[TargetMotion] Subscribing to " << ("/" + model->GetName() + "/command") << "\n";
-
-      //
       // Initialize the unicycle motion planner
       //
 
       unicycle = std::unique_ptr<motion::UnicyclePlanner>(new motion::UnicyclePlanner());
 
+      //
+      // Connect to ROS
+      //
 
-      motion::waypoints_t waypoints = {{5,5},{10,8},{7,0},{15,-3},{15,4},{-2,4}};
-      motion::coord_t vel = {4, 4};
-      unicycle->generateWaypoints(waypoints, vel);
+      nh = ros::NodeHandle(model->GetName());
 
-      double radius = 2;
-      motion::coord_t center = {5, 5};
-      unicycle->generateCircle(radius, center);
+      // Load the trajectory parameters based on the desired type 
+      int traj = nh.param<int>("trajectory_type", 0);
+      if (traj == 0)
+      { // point
 
-      double a = 2;
-      center = {0, 0};
-      // unicycle->generateLemniscate(a, center);
+        double x = nh.param<double>("x", 5);
+        double y = nh.param<double>("y", 5);
 
-      // unicycle->goToPoint(4, -8.5);
+        gzmsg << "[TargetMotion] Generated a goToPoint trajectory for " << model->GetName() << ".\n";
+        unicycle->goToPoint(x, y);
+      }
+      else if (traj == 1)
+      { // waypoints
+
+        // Get origin of waypoints
+        double x = nh.param<double>("x", 0);
+        double y = nh.param<double>("y", 0);
+
+        // Get waypoint lists for x and y
+        std::vector<double> waypoints_x, waypoints_y;
+        nh.getParam("waypoints_x", waypoints_x);
+        nh.getParam("waypoints_y", waypoints_y);
+
+        // Construct a waypoint container
+        motion::waypoints_t waypoints;
+        for (int i=0; i<waypoints_x.size(); i++)
+          waypoints.push_back({ x + waypoints_x[i], y + waypoints_y[i]}); // translate waypoints to origin
+
+        double vx = nh.param<double>("vx", 1);
+        double vy = nh.param<double>("vy", 1);
+
+        gzmsg << "[TargetMotion] Generated a waypoint trajectory for " << model->GetName() << ".\n";
+        unicycle->generateWaypoints(waypoints, {vx, vy});
+      }
+      else if (traj == 2)
+      { // circle
+
+        double radius = nh.param<double>("radius", 2);
+        double x = nh.param<double>("x", 5);
+        double y = nh.param<double>("y", 5);
+
+        gzmsg << "[TargetMotion] Generated a circle trajectory for " << model->GetName() << ".\n";
+        unicycle->generateCircle(radius, {x, y});
+      }
+      else if (traj == 3)
+      { // lemniscate (figure-8)
+
+        double a = nh.param<double>("a", 2);
+        double x = nh.param<double>("x", 5);
+        double y = nh.param<double>("y", 5);
+
+        gzmsg << "[TargetMotion] Generated a lemniscate trajectory for " << model->GetName() << ".\n";
+        unicycle->generateLemniscate(a, {x, y});
+      }
+      else
+      { // undefined
+        gzerr << "[TargetMotion] Trajectory type " << traj << " is undefined.\n";
+      }      
 
       //
       // Initialize low-level PID controllers
@@ -107,10 +148,6 @@ namespace gazebo
       double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
       simTime_d1_ = _info.simTime.Double();
 
-      // VelController(0, 3.14159, dt);
-
-      // return;
-
       // Update the unicycle motion planner with the current state of the robot
       // as integrated / propagated from the Gazebo physics engine
       math::Vector3 pos = link->GetWorldPose().pos;
@@ -129,18 +166,16 @@ namespace gazebo
 
     void VelController(double vel, double omega, double dt)
     {
-
       // Apply forces to the model (using P control) to achieve
       // the commanded linear and angular velocities.
 
       // Check if robot has fallen down
-      if (link->GetWorldPose().pos.z > 0.03 || 
-          std::abs(link->GetWorldPose().rot.GetAsEuler().x) > 0.075 ||
-          std::abs(link->GetWorldPose().rot.GetAsEuler().y) > 0.075)
+      if (link->GetWorldPose().pos.z > 0.1 || 
+          std::abs(link->GetWorldPose().rot.GetAsEuler().x) > 0.1 ||
+          std::abs(link->GetWorldPose().rot.GetAsEuler().y) > 0.1)
       {
         gzerr << "I've fallen and can't get up!\n";
-        // Help Mrs. Fletcher stand up
-        LifeCall();
+        LifeCall(); // Help Mrs. Fletcher stand up
         return;
       }
 
@@ -167,6 +202,7 @@ namespace gazebo
     {
       // start with the current pose
       math::Pose resetPose = link->GetWorldPose();
+      resetPose.pos.z = 0;
 
       // zero out the roll, pitch orientations
       math::Vector3 euler = resetPose.rot.GetAsEuler();

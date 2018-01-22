@@ -76,7 +76,7 @@ void UnicyclePlanner::generateLemniscate(double a, const coord_t& center) {
     d_ = 0;
 
     max_vel_ = 5;
-    max_ang_vel_ = (2*M_PI)/3.0;
+    max_ang_vel_ = 4*M_PI;
     speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(1, 0.1, 0, -max_vel_, max_vel_));
     headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(15, 0, 0, -max_ang_vel_, max_ang_vel_));
 

@@ -16,6 +16,19 @@ void UnicyclePlanner::updateState(double x, double y, double theta) {
 
 // ----------------------------------------------------------------------------
 
+void UnicyclePlanner::goToPoint(double x, double y) {
+    type_ = POINT;
+    robotpath_.clear();
+    robotpath_.push_back({x, y});
+
+    d_ = 0;
+
+    speedPID_ = std::unique_ptr<SimplePID>(new SimplePID(0.5, 0, 0, -max_vel_, max_vel_));
+    headingPID_ = std::unique_ptr<SimplePID>(new SimplePID(8, 0, 0, -max_ang_vel_, max_ang_vel_));
+}
+
+// ----------------------------------------------------------------------------
+
 void UnicyclePlanner::generateWaypoints(const waypoints_t& waypoints, const coord_t& vel) {
     type_ = WAYPOINTS;
     waypoints_ = waypoints;

@@ -24,11 +24,10 @@
 
     <plugin name="TargetMotion" filename="libTargetMotion.so">
       <baseLink>feet</baseLink>
-      <kpXY>5000</kpXY>
-      <kpOmega>5000</kpOmega>
-      <maxFXY>10000</maxFXY>
-      <maxFOmega>10000</maxFOmega>
-      <friction>500</friction>
+      <kpXY>70000</kpXY>
+      <kpOmega>10000</kpOmega>
+      <maxFXY>60000</maxFXY>
+      <maxFOmega>100000</maxFOmega>
     </plugin>
 
   </model>

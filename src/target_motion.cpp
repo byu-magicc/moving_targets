@@ -57,7 +57,6 @@ namespace gazebo
       kpOmega   = getValueFromSdf("kpOmega");
       maxFXY    = getValueFromSdf("maxFXY");
       maxFOmega = getValueFromSdf("maxFOmega");
-      friction  = getValueFromSdf("friction");
 
       //
       // Connect to ROS
@@ -87,6 +86,15 @@ namespace gazebo
       center = {0, 0};
       // unicycle->generateLemniscate(a, center);
 
+      unicycle->goToPoint(20, -8.5);
+
+      //
+      // Initialize low-level PID controllers
+      //
+
+      forcePID.Init(kpXY, 100000, 0, 100000, -100000, maxFXY, -maxFXY);
+      torquePID.Init(kpOmega, 1000, 0, 1000, -1000, maxFOmega, -maxFOmega);
+
       // Listen to the update event. This event is broadcast every simulation iteration.
       updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
     }
@@ -95,7 +103,13 @@ namespace gazebo
 
     void OnUpdate(const common::UpdateInfo& _info)
     {
-      // math::Vector3 vel = PosController(math::Vector3(10, 10, 0));
+      // calculate the timestep
+      double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
+      simTime_d1_ = _info.simTime.Double();
+
+      // VelController(0, 3.14159, dt);
+
+      // return;
 
       // Update the unicycle motion planner with the current state of the robot
       // as integrated / propagated from the Gazebo physics engine
@@ -103,49 +117,40 @@ namespace gazebo
       math::Vector3 rot = link->GetWorldPose().rot.GetAsEuler();
       unicycle->updateState(pos.x, pos.y, rot.z);
 
-      // calculate the timestep
-      double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
-      simTime_d1_ = _info.simTime.Double();
-
       // Use the unicycle motion planner to generate speed and heading rate commands
       double v, w;
       unicycle->getCommands(dt, v, w);
 
       // Command the Gazebo robot to achieve the desired speed and heading rate
-      VelController(v, w);
+      VelController(v, w, dt);
     }
 
     // ------------------------------------------------------------------------
 
-    void VelController(double vel, double omega)
+    void VelController(double vel, double omega, double dt)
     {
+
       // Apply forces to the model (using P control) to achieve
       // the commanded linear and angular velocities.
 
       // speed --> force in body x-axis
-      math::Vector3 linearVel = link->GetRelativeLinearVel();
-      double Fx = (vel - linearVel.x)*kpXY;
-      saturate(Fx, maxFXY);
-      if (Fx == maxFXY) gzerr << "XY saturating!!\n";
+      double c = 2.0/vel; // inverse velocity clamp
+      double linearVel_error = math::clamp(link->GetRelativeLinearVel().x - vel, -c, c);
+      double Fx = forcePID.Update(linearVel_error, dt);
+      if (Fx == maxFXY) gzerr << "XY clamped (" << Fx << ") !!\n";
       link->AddRelativeForce(math::Vector3(Fx, 0, 0));
 
       // Heading rate --> angular velocity
-      math::Vector3 angularVel = link->GetRelativeAngularVel();
-      double Fw = (omega - angularVel.z)*kpOmega;
-      saturate(Fw, maxFOmega);
-      if (Fw == maxFOmega) gzerr << "Omega saturating!!\n";
+      double angularVel_error = link->GetRelativeAngularVel().z - omega;
+      double Fw = torquePID.Update(angularVel_error, dt);
+      if (Fw == maxFOmega) gzerr << "Omega clamped (" << Fw << ") !!\n";
       link->AddRelativeTorque(math::Vector3(0, 0, Fw));
 
-      // // Artificially add friction
-      // link->AddForce( -link->GetWorldLinearVel()*friction );
-      // link->AddTorque( -link->GetWorldAngularVel()*friction );
+      gzmsg << "Linear Velocity (" << link->GetRelativeLinearVel().x << ") Error: " << vel - link->GetRelativeLinearVel().x << "\t" << "Force: " << Fx << "\n";
+      gzmsg << "Angular Velocity (" << link->GetRelativeAngularVel().z << ") Error: " << omega - link->GetRelativeAngularVel().z << "\t" << "Torque: " << Fw << "\n";
     }
 
     // ------------------------------------------------------------------------
-
-    // Helper functions for the velocity controller
-    int sgn(double val) { return (0 < val) - (val < 0); }
-    void saturate(double& F, const double Fmax) { if (fabs(F) > Fmax) F = Fmax*sgn(F); }
 
   private:
     // Pointer to the model
@@ -156,12 +161,14 @@ namespace gazebo
 
     double simTime_d1_ = 0;
 
+    common::PID forcePID;
+    common::PID torquePID;
+
     // parameters
     double kpXY;
     double kpOmega;
     double maxFXY;
     double maxFOmega;
-    double friction;
 
     // ROS stuff
     ros::NodeHandle nh;

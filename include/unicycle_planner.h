@@ -23,6 +23,8 @@ namespace motion {
 
         void getCommands(double dt, double& v, double& w);
 
+        void goToPoint(double x, double y);
+
         void generateWaypoints(const waypoints_t& waypoints, const coord_t& vel);
         void generateCircle(double radius, const coord_t& center);
         void generateSinusoidal();
@@ -31,7 +33,7 @@ namespace motion {
 
     private:
         // available types of trajectories
-        enum Trajectory { WAYPOINTS, CIRCLE, SINUSOIDAL, LEMNISCATE };
+        enum Trajectory { POINT, WAYPOINTS, CIRCLE, SINUSOIDAL, LEMNISCATE };
 
         // unicycle state in the world frame
         double x_ = 0;
@@ -44,6 +46,8 @@ namespace motion {
         int traj_idx_ = 0;
 
         // parameters
+        double max_vel_ = 10;
+        double max_ang_vel_ = 3*M_PI;
         double d_ = 1;    // look-ahead distance for speed control
 
             // WAYPOINTS

@@ -13,11 +13,11 @@
   <arg name="model_type" value="$(eval 'gazebo' if '.sdf' in arg('model')[-4:] else 'urdf')" />
 
   <!-- send the robot model to param server -->
-  <param name="model_desc_movers" textfile="$(arg model)" />
+  <param name="$(arg name)_model_desc" textfile="$(arg model)" />
 
   <!-- push model_desc_movers to factory and spawn robot in gazebo -->
   <node name="spawn_$(arg name)" pkg="gazebo_ros" type="spawn_model"
-    args="-param model_desc_movers
+    args="-param $(arg name)_model_desc
           -$(arg model_type)
           -x $(arg x)
           -y $(arg y)

@@ -174,7 +174,7 @@ namespace gazebo
           std::abs(link->GetWorldPose().rot.GetAsEuler().x) > 0.1 ||
           std::abs(link->GetWorldPose().rot.GetAsEuler().y) > 0.1)
       {
-        gzerr << "I've fallen and can't get up!\n";
+        // gzerr << "I've fallen and can't get up!\n";
         LifeCall(); // Help Mrs. Fletcher stand up
         return;
       }

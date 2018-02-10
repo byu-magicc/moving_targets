@@ -8,6 +8,7 @@
 #include <gazebo/common/common.hh>
 
 #include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
 
 #include "unicycle_planner.h"
 
@@ -68,7 +69,7 @@ namespace gazebo
       // Connect to ROS
       //
 
-      nh = ros::NodeHandle(model->GetName());
+      nh = ros::NodeHandle("targets/" + model->GetName());
 
       // Load the trajectory parameters based on the desired type 
       int traj = nh.param<int>("trajectory_type", 0);
@@ -127,7 +128,10 @@ namespace gazebo
       else
       { // undefined
         gzerr << "[TargetMotion] Trajectory type " << traj << " is undefined.\n";
-      }      
+      }
+
+      // Create ROS publishers
+      state = nh.advertise<nav_msgs::Odometry>("state", 10);
 
       //
       // Initialize low-level PID controllers
@@ -160,6 +164,14 @@ namespace gazebo
 
       // Command the Gazebo robot to achieve the desired speed and heading rate
       VelController(v, w, dt);
+
+      // publish mover's state odometry
+      math::Pose m = this->model->GetWorldPose();
+      nav_msgs::Odometry odom;
+      odom.header.stamp.sec = model->GetWorld()->GetSimTime().sec;
+      odom.header.stamp.nsec = model->GetWorld()->GetSimTime().nsec;
+      odom.header.frame_id = "map";
+      odom.child_frame_id = "uh";
     }
 
     // ------------------------------------------------------------------------
@@ -234,6 +246,8 @@ namespace gazebo
 
     common::PID forcePID;
     common::PID torquePID;
+
+    ros::Publisher state;
 
     // parameters
     double kpXY;

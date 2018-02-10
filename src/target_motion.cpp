@@ -166,12 +166,25 @@ namespace gazebo
       VelController(v, w, dt);
 
       // publish mover's state odometry
-      math::Pose m = this->model->GetWorldPose();
       nav_msgs::Odometry odom;
       odom.header.stamp.sec = model->GetWorld()->GetSimTime().sec;
       odom.header.stamp.nsec = model->GetWorld()->GetSimTime().nsec;
       odom.header.frame_id = "map";
-      odom.child_frame_id = "uh";
+      odom.child_frame_id = "target_" + model->GetName();
+      odom.pose.pose.position.x     = model->GetWorldPose().pos.x;
+      odom.pose.pose.position.y     = model->GetWorldPose().pos.y;
+      odom.pose.pose.position.z     = model->GetWorldPose().pos.z;
+      odom.pose.pose.orientation.w  = model->GetWorldPose().rot.w;
+      odom.pose.pose.orientation.x  = model->GetWorldPose().rot.x;
+      odom.pose.pose.orientation.y  = model->GetWorldPose().rot.y;
+      odom.pose.pose.orientation.z  = model->GetWorldPose().rot.z;
+      odom.twist.twist.linear.x     = model->GetRelativeLinearVel().x;
+      odom.twist.twist.linear.y     = model->GetRelativeLinearVel().y;
+      odom.twist.twist.linear.z     = model->GetRelativeLinearVel().z;
+      odom.twist.twist.angular.x    = model->GetRelativeAngularVel().x;
+      odom.twist.twist.angular.y    = model->GetRelativeAngularVel().y;
+      odom.twist.twist.angular.z    = model->GetRelativeAngularVel().z;
+      state.publish(odom);
     }
 
     // ------------------------------------------------------------------------

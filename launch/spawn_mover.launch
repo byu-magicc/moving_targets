@@ -6,7 +6,7 @@
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
   <arg name="yaw" default="0.0"/>
-  <arg name="robot_namespace" default="/"/>
+  <arg name="robot_namespace" default=""/>
   <arg name="gazebo_namespace" default=""/>
 
   <!-- Automatically detect if SDF (-gazebo) or URDF (-urdf) using the last 4 chars of model name -->

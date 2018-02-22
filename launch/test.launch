@@ -23,7 +23,7 @@
     </include>
 
     <!-- Set parameters for the mover -->
-    <group ns="$(arg mover_name)">
+    <group ns="targets/$(arg mover_name)">
         <!-- Trajectory type: goToPoint -->
         <group if="0">
             <param name="trajectory_type" type="int" value="0" />

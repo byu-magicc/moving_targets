@@ -134,8 +134,15 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGE
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+add_library(TargetMotion SHARED 
+	src/target_motion.cpp 
+	src/path_manager/radius_manager.cpp 
+	src/path_follower/linear_path.cpp)
 
-add_executable(test src/test.cpp)
+add_dependencies(TargetMotion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+
+# add_executable(waypoint_test test/waypoint_test.cpp)
 
 #############
 ## Install ##

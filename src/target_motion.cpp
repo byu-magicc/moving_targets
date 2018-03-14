@@ -10,7 +10,7 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   model_ = _parent;
 
   // Turn off gravity
-  model_.SetGravityMode(false);
+  model_->SetGravityMode(false);
 
 
   //
@@ -20,54 +20,57 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   nh_ = ros::NodeHandle("targets/" + model_->GetName());
 
   // Load the trajectory parameters based on the desired type 
-  int traj = nh.param<int>("trajectory_type", 0);
+  int traj = nh_.param<int>("trajectory_type", 0);
   if (traj == 0)
   { // point
 
-    double x = nh.param<double>("x", 5);
-    double y = nh.param<double>("y", 5);
+    double x = nh_.param<double>("x", 5);
+    double y = nh_.param<double>("y", 5);
 
-    gzmsg << "[TargetMotion] Generated a goToPoint trajectory for " << model->GetName() << ".\n";
+    gzmsg << "[TargetMotion] Generated a goToPoint trajectory for " << model_->GetName() << ".\n";
   }
   else if (traj == 1)
   { // waypoints
 
     // Get origin of waypoints
-    double x = nh.param<double>("x", 0);
-    double y = nh.param<double>("y", 0);
+    double x = nh_.param<double>("x", 0);
+    double y = nh_.param<double>("y", 0);
 
     // Get waypoint lists for x and y
     std::vector<double> waypoints_x, waypoints_y;
-    nh.getParam("waypoints_x", waypoints_x);
-    nh.getParam("waypoints_y", waypoints_y);
+    nh_.getParam("waypoints_x", waypoints_x);
+    nh_.getParam("waypoints_y", waypoints_y);
 
     // Construct a waypoint container
-    motion::waypoints_t waypoints;
-    for (int i=0; i<waypoints_x.size(); i++)
-      waypoints.push_back({ x + waypoints_x[i], y + waypoints_y[i]}); // translate waypoints to origin
+    for (int i=0; i<waypoints_x.size(); i++) {
+      motion::coord_t waypoint (x + waypoints_x[i], y + waypoints_y[i], 0);
+      waypoints_.push_back(waypoint); // translate waypoints to origin
 
-    double vx = nh.param<double>("vx", 1);
-    double vy = nh.param<double>("vy", 1);
+      std::cout << "waypoints: " << waypoints_[i] << std::endl;
+    }
 
-    gzmsg << "[TargetMotion] Generated a waypoint trajectory for " << model->GetName() << ".\n";
+    double vx = nh_.param<double>("vx", 1);
+    double vy = nh_.param<double>("vy", 1);
+
+    gzmsg << "[TargetMotion] Generated a waypoint trajectory for " << model_->GetName() << ".\n";
   }
   else if (traj == 2)
   { // circle
 
-    double radius = nh.param<double>("radius", 2);
-    double x = nh.param<double>("x", 5);
-    double y = nh.param<double>("y", 5);
+    double radius = nh_.param<double>("radius", 2);
+    double x = nh_.param<double>("x", 5);
+    double y = nh_.param<double>("y", 5);
 
-    gzmsg << "[TargetMotion] Generated a circle trajectory for " << model->GetName() << ".\n";
+    gzmsg << "[TargetMotion] Generated a circle trajectory for " << model_->GetName() << ".\n";
   }
   else if (traj == 3)
   { // lemniscate (figure-8)
 
-    double a = nh.param<double>("a", 2);
-    double x = nh.param<double>("x", 5);
-    double y = nh.param<double>("y", 5);
+    double a = nh_.param<double>("a", 2);
+    double x = nh_.param<double>("x", 5);
+    double y = nh_.param<double>("y", 5);
 
-    gzmsg << "[TargetMotion] Generated a lemniscate trajectory for " << model->GetName() << ".\n";
+    gzmsg << "[TargetMotion] Generated a lemniscate trajectory for " << model_->GetName() << ".\n";
   }
   else
   { // undefined
@@ -79,7 +82,8 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 
 
   // Listen to the update event. This event is broadcast every simulation iteration.
-  updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
+  updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
+
 }
 
 // ------------------------------------------------------------------------
@@ -87,7 +91,54 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
 void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 {
   
-    // get waypoints
+  // Get world pose
+  math::Pose pose = model_->GetWorldPose();
+
+  // Get position and pack into type motion::coord_t
+  math::Vector3 position = pose.pos;
+  motion::coord_t pos (position.x, position.y, position.z);
+
+  // Get Euler angles
+  math::Vector3 rot = pose.rot.GetAsEuler();
+
+  // Manage waypoints
+  motion::coord_t waypoint = radius_manager_.manage_waypoints(pos, waypoints_,1);
+
+  // std::cout << "Current waypoint: " << waypoint;
+
+  // Heading
+  float yaw = rot.z;
+
+  // Rotation Matrix
+  math::Matrix3 rotz(cos(yaw), -sin(yaw), 0.0,
+               sin(yaw),  cos(yaw), 0.0,
+               0.0,       0.0,    1.0);
+
+  math::Vector3 vel (1, 0, 0);
+
+  math::Vector3 command = rotz*vel;
+
+  model_->SetLinearVel(command);
+
+  motion::coord_t vect = waypoint - pos;
+
+  std::cout << "vect: " << vect << std::endl;
+
+  double omega = atan2(std::get<1>(vect), std::get<0>(vect));
+
+  std::cout << "omega: " << omega << std::endl;
+  std::cout << "yaw: " << yaw << std::endl;
+
+  double mag = motion::get_magnitude(vect);
+
+  double test = 0.1*(omega-yaw);
+
+  // if ( mag < 2)
+    model_->SetAngularVel(ignition::math::Vector3d(0,0,test));
+  // else
+    // model_->SetAngularVel(ignition::math::Vector3d(0,0,0));
+
+
     // get velocity and orientation
 
   PublishState();
@@ -118,8 +169,8 @@ void TargetMotion::VelController(double vel, double omega)
 
 
 
-  link->SetLinearVel(ignition::math::Vector3d(interial_frame_command(0),interial_frame_command(1),0));
-  link->SetAngularVel(ignition::math::Vector3d(0,0,omega));
+  model_->SetLinearVel(ignition::math::Vector3d(interial_frame_command(0),interial_frame_command(1),0));
+  model_->SetAngularVel(ignition::math::Vector3d(0,0,omega));
 
 
 }
@@ -146,4 +197,6 @@ void TargetMotion::PublishState() {
     odom.twist.twist.angular.y    = model_->GetRelativeAngularVel().y;
     odom.twist.twist.angular.z    = model_->GetRelativeAngularVel().z;
     state_.publish(odom);
+}
+
 }

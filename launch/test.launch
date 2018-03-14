@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-    <arg name="mover_name" default="parker" />
+    <arg name="mover_name" default="Parker" />
 
     <!-- Start Gazebo -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -16,7 +16,7 @@
     <include file="$(find moving_targets)/launch/spawn_mover.launch">
         <arg name="name"    value="$(arg mover_name)" />
         <arg name="model"   value="$(find moving_targets)/models/moving_person_walking/model.sdf" />
-        <arg name="x"       value="0"/>
+        <arg name="x"       value="10"/>
         <arg name="y"       value="0"/>
         <arg name="z"       value="0"/>
         <arg name="yaw"     value="0"/>

@@ -129,6 +129,16 @@ void UnicyclePlanner::getCommands(double dt, double& v, double& w) {
 }
 
 // ----------------------------------------------------------------------------
+
+// void UnicyclePlanner::getCommands(const math::Vector3 pos, double& v, double& w) {
+
+//     // Update next waypoint if needed. 
+//     pathManager(waypoints_, pos);
+
+
+// }
+
+// ----------------------------------------------------------------------------
 // Private Methods
 // ----------------------------------------------------------------------------
 
@@ -246,5 +256,22 @@ path_t UnicyclePlanner::mstraj(const waypoints_t& segments, const coord_t& qdmax
     return traj;
 
 }
+
+// void UnicyclePlanner::pathManager(const waypoints_t& segments, const math::Vector3 pos) {
+
+//     float radius = 1;
+
+//     // Distance between current position and desired waypoint
+//     float distance = std::sqrt(pow(segments[1].first - pos.x,2) + pow(segments[1].second-pos.y,2));
+
+//     // switch to next waypoint. 
+//     if (distance < radius) {
+
+//         segments.push_back(segments[0]);
+//         segments.erase(segments.begin());
+//     }
+
+
+// }
 
 }

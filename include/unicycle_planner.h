@@ -8,6 +8,7 @@
 #include <iostream>
 
 
+
 namespace motion {
 
     typedef std::pair<double, double> coord_t;
@@ -22,6 +23,8 @@ namespace motion {
         void updateState(double x, double y, double theta);
 
         void getCommands(double dt, double& v, double& w);
+
+        // void getCommands(const math::Vector3 pos, double& v, double& w);
 
         void goToPoint(double x, double y);
 
@@ -70,6 +73,8 @@ namespace motion {
         void regenerateTrajectory(double dt);
         double getCurrentGoalFromTrajectory(double& gx, double& gy);
         path_t mstraj(const waypoints_t& segments, const coord_t& qdmax, double dt);
+
+        // void pathManager(const waypoints_t& segments, const math::Vector3 pos);
 
         //
         // Simple PID class

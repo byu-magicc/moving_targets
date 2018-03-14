@@ -8,27 +8,7 @@
       <pose>0 0 0 0 0 1.5708</pose>
     </include>
 
-    <link name="feet">
-      <inertial>
-        <pose>0 0 0 0 0 0</pose>
-        <mass>500</mass>
-        <inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia>
-      </inertial>
-    </link>
-
-    <joint type="fixed" name="motion_connection">
-      <pose>0 0 -0.95 0 0 0</pose>
-      <parent>feet</parent>
-      <child>person_walking::link</child>
-    </joint>
-
-    <plugin name="TargetMotion" filename="libTargetMotion.so">
-      <baseLink>feet</baseLink>
-      <kpXY>70000</kpXY>
-      <kpOmega>10000</kpOmega>
-      <maxFXY>60000</maxFXY>
-      <maxFOmega>100000</maxFOmega>
-    </plugin>
+    <plugin name="TargetMotion" filename="libTargetMotion.so"/>
 
   </model>
 </sdf>

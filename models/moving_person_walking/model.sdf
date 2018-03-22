@@ -8,7 +8,19 @@
       <pose>0 0 0 0 0 1.5708</pose>
     </include>
 
-    <plugin name="TargetMotion" filename="libTargetMotion.so"/>
+    
+    <plugin name="TargetMotion" filename="libTargetMotion.so">
+      <kpPsi>2</kpPsi>
+      <kpZ>2</kpZ>      
+      <kdPsi>1</kdPsi>
+      <kdZ>1</kdZ>
+      <maxVPsi>1</maxVPsi>
+      <maxVZ>1</maxVZ>
+      <k_orbit>2</k_orbit>
+      <k_path>3</k_path>
+      <chi_infinity>0.7853975</chi_infinity>
+    </plugin>
+
 
   </model>
 </sdf>

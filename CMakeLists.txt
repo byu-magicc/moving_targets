@@ -122,7 +122,10 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
+include_directories(include 
+	${catkin_INCLUDE_DIRS} 
+	${GAZEBO_INCLUDE_DIRS} 
+	${EIGEN3_INCLUDE_DIR})
 
 ## Declare a C++ library
 # add_library(TargetMotion SHARED src/target_motion.cpp src/unicycle_planner.cpp)
@@ -137,10 +140,11 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${GAZEBO_INCLUDE_DIRS} ${EIGE
 add_library(TargetMotion SHARED 
 	src/target_motion.cpp 
 	src/path_manager/radius_manager.cpp 
-	src/path_follower/linear_path.cpp)
+	src/path_follower/straight_line.cpp
+	src/path_follower/orbit.cpp)
 
 add_dependencies(TargetMotion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
+target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} )
 
 # add_executable(waypoint_test test/waypoint_test.cpp)
 

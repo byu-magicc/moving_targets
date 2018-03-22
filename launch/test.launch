@@ -16,9 +16,9 @@
     <include file="$(find moving_targets)/launch/spawn_mover.launch">
         <arg name="name"    value="$(arg mover_name)" />
         <arg name="model"   value="$(find moving_targets)/models/moving_person_walking/model.sdf" />
-        <arg name="x"       value="10"/>
+        <arg name="x"       value="1"/>
         <arg name="y"       value="0"/>
-        <arg name="z"       value="0"/>
+        <arg name="z"       value="0.6"/>
         <arg name="yaw"     value="0"/>
     </include>
 
@@ -27,35 +27,51 @@
         <!-- Trajectory type: goToPoint -->
         <group if="0">
             <param name="trajectory_type" type="int" value="0" />
-            <param name="x" type="double" value="15" />
+            <param name="x" type="double" value="1" />
             <param name="y" type="double" value="0" />
+            <param name="z" type="double" value="0.6"/>
+            <param name="v" type="double" value="1" />
+            <rosparam param="waypoints_x">[0, 5]</rosparam>
+            <rosparam param="waypoints_y">[0, 0]</rosparam>
+            <rosparam param="waypoints_z">[0, 0]</rosparam>
         </group>
 
         <!-- Trajectory type: waypoints -->
-        <group if="1">
+        <group if="0">
             <param name="trajectory_type" type="int" value="1" />
-            <param name="x" type="double" value="10" />
+            <param name="x" type="double" value="1" />
             <param name="y" type="double" value="0" />
-            <param name="vx" type="double" value="2" />
-            <param name="vy" type="double" value="2" />
+            <param name="z" type="double" value="0.6"/>
+            <param name="v" type="double" value="2" />
             <rosparam param="waypoints_x">[0, 5, 5, 0, 0]</rosparam>
             <rosparam param="waypoints_y">[0, 0, 5, 5, 0]</rosparam>
+            <rosparam param="waypoints_z">[0, 0, 0, 0, 0]</rosparam>
         </group>
 
         <!-- Trajectory type: circle -->
         <group if="0">
             <param name="trajectory_type" type="int" value="2" />
-            <param name="radius" type="double" value="4" />
-            <param name="x" type="double" value="5" />
-            <param name="y" type="double" value="-3" />
+            <param name="radius" type="double" value="3" />
+            <param name="lambda" type="double" value = "-1"/>
+            <param name="x" type="double" value="1" />
+            <param name="y" type="double" value="0" />
+            <param name="z" type="double" value="0.6"/>
+            <param name="v" type="double" value="2" />
+            <rosparam param="waypoints_x">[0]</rosparam>
+            <rosparam param="waypoints_y">[0]</rosparam>
+            <rosparam param="waypoints_z">[0]</rosparam>
         </group>
 
-        <!-- Trajectory type: lemniscate -->
-        <group if="0">
+        <!-- Trajectory type: elipse -->
+        <group if="1">
             <param name="trajectory_type" type="int" value="3" />
-            <param name="a" type="double" value="2" />
-            <param name="x" type="double" value="0" />
+            <param name="x" type="double" value="1" />
             <param name="y" type="double" value="0" />
+            <param name="z" type="double" value="0.6"/>
+            <param name="v" type="double" value="1" />
+            <rosparam param="waypoints_x">[0, 5]</rosparam>
+            <rosparam param="waypoints_y">[0, 0]</rosparam>
+            <rosparam param="waypoints_z">[0, 0]</rosparam>
         </group>
     </group>
 </launch>

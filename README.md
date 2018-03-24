@@ -9,7 +9,8 @@ Note that the namespace `targets/<model name>` is hardcoded and that the paramet
 
 ## Set up Trajectories ##
 
-There are four types of trajectories that can be created: goToPoint, waypoints, circle, and elipse. You specify the type of trajectory and trajectory parameters in the roslaunch file. 
+There are four types of trajectories that can be created: goToPoint, waypoints, circle, and elipse. You specify the type of trajectory and trajectory parameters in the roslaunch file. For
+a complete example see test.launch. For information about each parameter read the descriptions below. 
 
 ### Parameters ###
 
@@ -20,6 +21,7 @@ There are four types of trajectories that can be created: goToPoint, waypoints, 
 | y               | initial y position in gazebo                                                                       | float       |
 | z               | initial z position in gazebo                                                                       | float       |
 | v               | horizontal velocity m/s                                                                            | float       |
+| move_target     | indicates if the agent should be moving or not.                                                    | bool        |
 | waypoints_x     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
 | waypoints_y     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
 | waypoints_z     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
@@ -39,6 +41,7 @@ Example setup
     <param name="y" type="double" value="0" />
     <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="1" />
+    <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5]</rosparam>
     <rosparam param="waypoints_y">[0, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
@@ -56,6 +59,7 @@ Example setup
     <param name="y" type="double" value="0" />
     <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="2" />
+    <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5, 5, 0, 0]</rosparam>
     <rosparam param="waypoints_y">[0, 0, 5, 5, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0, 0, 0, 0]</rosparam>
@@ -75,6 +79,7 @@ Example setup
     <param name="y" type="double" value="0" />
     <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="2" />
+    <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0]</rosparam>
     <rosparam param="waypoints_y">[0]</rosparam>
     <rosparam param="waypoints_z">[0]</rosparam>
@@ -85,11 +90,12 @@ Example setup
 Moves the agent in an elipse. Use only two waypoints. 
 
 ```
-   <param name="trajectory_type" type="int" value="3" />
+    <param name="trajectory_type" type="int" value="3" />
     <param name="x" type="double" value="1" />
     <param name="y" type="double" value="0" />
     <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="1" />
+    <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5]</rosparam>
     <rosparam param="waypoints_y">[0, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
@@ -126,4 +132,18 @@ Example setup
       <k_path>3</k_path>
       <chi_infinity>0.7853975</chi_infinity>
     </plugin>
+```
+
+## MovingTargets Service ##
+
+The plugin contains a ROS service that allows the user to reset the agent at any time, or to tell the agent to stop or move. The service is defined below.
+
+``` 
+# Service message for moving targets
+
+bool reset_target   # If true, the target will start over at its initial trajectory
+bool move_target    # If true, the target will move
+
+---
+
 ```

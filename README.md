@@ -136,7 +136,7 @@ Example setup
 
 ## MovingTargets Service ##
 
-The plugin contains a ROS service that allows the user to reset the agent at any time, or to tell the agent to stop or move. The service is defined below.
+The plugin contains a ROS server that allows the user to reset the agent at any time, or to tell the agent to stop or move. The service is defined below.
 
 ``` 
 # Service message for moving targets

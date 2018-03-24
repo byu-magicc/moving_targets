@@ -19,6 +19,7 @@
 #include "path_follower/straight_line.h"
 #include "path_follower/orbit.h"
 #include "path_follower/base_follower.h"
+#include "moving_targets/MovingTargets.h"
 #include "waypoint.h"
 
 
@@ -38,12 +39,15 @@ namespace gazebo
 
     void OnUpdate(const common::UpdateInfo& _info);
 
+    void getCommandError(float& chi_er, float h_er, float& yaw, float& distance);
 
-    void VelController(double chi_er, double h_er, double yaw, double distance, double dt);
+    void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, math::Vector3& linear_vel, math::Vector3& angular_vel);
 
     double getValueFromSdf(std::string name);
 
     void drawWaypoins(const motion::waypoints_t waypoints);
+
+    bool targetService(moving_targets::MovingTargets::Request &req, moving_targets::MovingTargets::Response &res);
 
     // Publish movers state to ROS
     void PublishState();
@@ -53,38 +57,41 @@ namespace gazebo
 
 
   private:
-    // Pointer to the model
-    physics::ModelPtr model_;
-    sdf::ElementPtr sdf_pointer_;
-    // rendering::VisualPtr visual_;
-    event::ConnectionPtr updateConnection_;
+    // Gazebo stuff
+    physics::ModelPtr model_;                // Ptr to model
+    sdf::ElementPtr sdf_pointer_;            // Ptr to sdf
+    event::ConnectionPtr updateConnection_;  // Ptr to update function
 
-    double simTime_d1_ = 0;
 
-    ros::Publisher state_;
-
-    // Velocity
-    float v_;
-
-    // waypoint manager
+    // Path manager
     motion::RadiusManager radius_manager_;
 
-    // Pointer to follower class that gets 
-    // heading and altitude commands
+    // Path follower
     std::shared_ptr<motion::BaseFollower> follower_;
+    motion::FollowerParams params_;
+
 
     // Agent's waypoints
-    motion::waypoints_t waypoints_;
+    motion::waypoints_t waypoints_curr_; // Current waypoints
+    motion::waypoints_t waypoints_init_;  // Initial waypoints
 
-    // Parameters
-    motion::FollowerParams params_;
+    // target_motion parameters
+    bool move_;                  // Indicates if the agent should move or not
+    double simTime_d1_ = 0;      // Time step (s)
+    float v_;                    // Linear velocity (m/s)
+    math::Pose pose_init_;        // Initial pose of agent.
+
+
 
     // Used to draw waypoints
     // rendering::DynamicLines *dynamic_lines_;
 
     // ROS stuff
     ros::NodeHandle nh_;
+    ros::Publisher state_;
+    ros::ServiceServer target_srv_;
 
+    // PID controls
     common::PID headingPID_;
     common::PID altitudePID_;
 

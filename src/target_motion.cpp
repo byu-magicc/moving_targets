@@ -26,6 +26,9 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Create ROS publishers
   state_ = nh_.advertise<nav_msgs::Odometry>("state", 10);
 
+  // Create the service
+  target_srv_ = nh_.advertiseService("moving_target_srv", &TargetMotion::targetService, this);
+
 
   //
   // Get SDF Values
@@ -52,6 +55,8 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Listen to the update event. This event is broadcast every simulation iteration.
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
 
+  pose_init_ = model_->GetWorldPose();
+
 }
 
 // ------------------------------------------------------------------------
@@ -66,6 +71,7 @@ void TargetMotion::loadTrajectory() {
   float x = nh_.param<float>("x",0);
   float y = nh_.param<float>("y",0);
   float z = nh_.param<float>("z",0);
+  move_ = nh_.param<bool>("move_target",true);
 
   // Get relative waypoint lists for x, y and z
   std::vector<double> waypoints_x, waypoints_y, waypoints_z;
@@ -77,9 +83,9 @@ void TargetMotion::loadTrajectory() {
   gzmsg << "waypoints: \n";
   for (int i=0; i<waypoints_x.size(); i++) {
     motion::coord_t waypoint (x + waypoints_x[i], y + waypoints_y[i], z + waypoints_z[i]);
-    waypoints_.push_back(waypoint); // translate waypoints to origin
+    waypoints_init_.push_back(waypoint); // translate waypoints to origin
 
-    gzmsg << waypoints_[i] << "\n";
+    gzmsg << waypoints_init_[i] << "\n";
   }
 
   // trajectory type 
@@ -122,6 +128,9 @@ void TargetMotion::loadTrajectory() {
 
   follower_->set_parameters(params_);
 
+  // Set current waypoints
+  waypoints_curr_ = waypoints_init_;
+
 
 }
 
@@ -130,10 +139,33 @@ void TargetMotion::loadTrajectory() {
 void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 {
   
-  // calculate the timestep
-   double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
-   simTime_d1_ = _info.simTime.Double();
+ 
+  math::Vector3 linear_vel(0,0,0); 
+  math::Vector3 angular_vel(0,0,0);
 
+  // If target is to move, calculate velocity commands
+  if (move_) {
+
+    float chi_er, h_er, yaw, distance;
+
+    getCommandError(chi_er, h_er, yaw, distance);
+
+    getVelCommands(_info, chi_er, h_er, yaw, distance,linear_vel,angular_vel);
+  }
+
+  // Set commands
+  model_->SetLinearVel(linear_vel);
+  model_->SetAngularVel(angular_vel);
+
+
+  PublishState();
+
+
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::getCommandError(float& chi_er, float h_er, float& yaw, float& distance) {
 
   // Get world pose
   math::Pose pose = model_->GetWorldPose();
@@ -146,42 +178,40 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
   math::Vector3 rot = pose.rot.GetAsEuler();
 
   // Manage waypoints
-  float distance = radius_manager_.manage_waypoints(pos, waypoints_, params_.traj);
+  distance = radius_manager_.manage_waypoints(pos, waypoints_curr_, params_.traj);
 
   // Heading
-  float yaw = rot.z;
+  yaw = rot.z;
 
   // Get heading and altitude commands
   motion::FollowerCommands commands;
   if (params_.traj == 2) {
 
     // std::cout << "here" << std::endl;
-    commands = follower_->orbit_follower(waypoints_[0],pos, yaw);
+    commands = follower_->orbit_follower(waypoints_curr_[0],pos, yaw);
 
   } 
   else {
 
-   commands = follower_->line_follower(waypoints_[0], waypoints_[1]-waypoints_[0],pos, yaw);
+   commands = follower_->line_follower(waypoints_curr_[0], waypoints_curr_[1]-waypoints_curr_[0],pos, yaw);
 
   }
 
   // calculate heading and altitude errors
-  float h_er = std::get<2>(pos) - commands.h_c;
-  float chi_er =  yaw - commands.chi_c;
-
-  VelController(chi_er, h_er, yaw, distance, dt);
-
-
-  PublishState();
-
+  h_er = std::get<2>(pos) - commands.h_c;
+  chi_er =  yaw - commands.chi_c;
 
 }
 
 // ------------------------------------------------------------------------
 
-void TargetMotion::VelController(double chi_er, double h_er, double yaw, double distance, double dt)
+void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, math::Vector3& linear_vel, math::Vector3& angular_vel)
 {
   
+// calculate the timestep
+ double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
+ simTime_d1_ = _info.simTime.Double();
+
  //
  // calculate angular and linear velocity commands
  //
@@ -209,12 +239,15 @@ void TargetMotion::VelController(double chi_er, double h_er, double yaw, double 
               sin(yaw),  cos(yaw), 0.0,
               0.0,       0.0,    1.0);  
 
- // Rotate commands into current frame
- math::Vector3 command = rotz*vel;
+ // Rotate linear commands into current frame
+ linear_vel = rotz*vel;
 
- // Set commands
- model_->SetLinearVel(command);
- model_->SetAngularVel(ignition::math::Vector3d(0,0,wz));
+ // Get angular vel
+ angular_vel = math::Vector3(0,0,wz);
+
+
+
+
 
 
 }
@@ -249,6 +282,8 @@ void TargetMotion::VelController(double chi_er, double h_er, double yaw, double 
 // }
 
 
+
+
 // ------------------------------------------------------------------------
 
 
@@ -262,6 +297,32 @@ double TargetMotion::getValueFromSdf(std::string name) {
   return 0;
 
 }
+
+// ------------------------------------------------------------------------
+
+bool TargetMotion::targetService(moving_targets::MovingTargets::Request &req, moving_targets::MovingTargets::Response &res) {
+
+  move_ = req.move_target;
+
+  // Reset the agent to initial pose and reset the waypoints
+  if (req.reset_target == true) {
+
+    waypoints_curr_ = waypoints_init_;
+    model_->SetWorldPose(pose_init_);
+
+    // Reset PID controllers
+    headingPID_.Reset();
+    altitudePID_.Reset();
+
+    // gzmsg << "Reseting " << model_->GetName() << "\n";
+
+  }
+
+  return true;
+
+}
+
+// ------------------------------------------------------------------------
 
 void TargetMotion::PublishState() {
 

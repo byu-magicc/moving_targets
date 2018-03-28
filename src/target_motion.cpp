@@ -27,7 +27,7 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   state_ = nh_.advertise<nav_msgs::Odometry>("state", 10);
 
   // Create the service
-  target_srv_ = nh_.advertiseService("moving_target_srv", &TargetMotion::targetService, this);
+  target_srv_ = nh_.advertiseService("moving_target", &TargetMotion::targetService, this);
 
 
   //
@@ -72,6 +72,8 @@ void TargetMotion::loadTrajectory() {
   float y = nh_.param<float>("y",0);
   float z = nh_.param<float>("z",0);
   move_ = nh_.param<bool>("move_target",true);
+  acceleration_ = nh_.param<float>("acceleration",10);
+  delta_t_ = 2.4/acceleration_;
 
   // Get relative waypoint lists for x, y and z
   std::vector<double> waypoints_x, waypoints_y, waypoints_z;
@@ -143,15 +145,12 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
   math::Vector3 linear_vel(0,0,0); 
   math::Vector3 angular_vel(0,0,0);
 
-  // If target is to move, calculate velocity commands
-  if (move_) {
+  float chi_er, h_er, yaw, distance;
 
-    float chi_er, h_er, yaw, distance;
+  getCommandError(chi_er, h_er, yaw, distance);
 
-    getCommandError(chi_er, h_er, yaw, distance);
-
-    getVelCommands(_info, chi_er, h_er, yaw, distance,linear_vel,angular_vel);
-  }
+  getVelCommands(_info, chi_er, h_er, yaw, distance,linear_vel,angular_vel);
+  
 
   // Set commands
   model_->SetLinearVel(linear_vel);
@@ -246,6 +245,40 @@ void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er
  angular_vel = math::Vector3(0,0,wz);
 
 
+ float scale;
+ if (move_) {
+  
+  delta_t_ -= dt;
+
+  scale = std::exp(-delta_t_*acceleration_);
+
+  if (scale > 1) {
+   scale = 1;
+   delta_t_ = 0;
+  }
+
+ }
+ else {
+
+  delta_t_ += dt;
+
+  scale = std::exp(-delta_t_*acceleration_);
+
+  if (scale < 0.1) {
+    delta_t_ = 2.4/acceleration_;  
+    scale = 0;
+  }
+
+ }
+
+ std::cout << "scale: " << scale << std::endl;
+
+
+
+
+ linear_vel = linear_vel*scale;
+ angular_vel= angular_vel*scale;
+
 
 
 
@@ -302,10 +335,10 @@ double TargetMotion::getValueFromSdf(std::string name) {
 
 bool TargetMotion::targetService(moving_targets::MovingTargets::Request &req, moving_targets::MovingTargets::Response &res) {
 
-  move_ = req.move_target;
+  move_ = req.move;
 
   // Reset the agent to initial pose and reset the waypoints
-  if (req.reset_target == true) {
+  if (req.reset == true) {
 
     waypoints_curr_ = waypoints_init_;
     model_->SetWorldPose(pose_init_);
@@ -313,6 +346,8 @@ bool TargetMotion::targetService(moving_targets::MovingTargets::Request &req, mo
     // Reset PID controllers
     headingPID_.Reset();
     altitudePID_.Reset();
+
+    delta_t_ = 2.4/acceleration_;
 
     // gzmsg << "Reseting " << model_->GetName() << "\n";
 

@@ -22,7 +22,7 @@
 #include "moving_targets/MovingTargets.h"
 #include "waypoint.h"
 
-
+#include <algorithm>
 #include <Eigen/Dense>
 
 namespace gazebo
@@ -80,6 +80,7 @@ namespace gazebo
     double simTime_d1_ = 0;      // Time step (s)
     float v_;                    // Linear velocity (m/s)
     math::Pose pose_init_;        // Initial pose of agent.
+    float acceleration_;
 
 
 
@@ -94,6 +95,9 @@ namespace gazebo
     // PID controls
     common::PID headingPID_;
     common::PID altitudePID_;
+
+    // speed scale use to slow down
+    float delta_t_ ;
 
   };
 

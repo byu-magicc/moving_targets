@@ -1,6 +1,6 @@
 # Service message for moving targets
 
-bool reset_target   # If true, the target will start over at its initial trajectory
-bool move_target    # If true, the target will move
+bool reset   # If true, the target will start over at its initial trajectory
+bool move    # If true, the target will move
 
 ---

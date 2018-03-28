@@ -72,7 +72,7 @@ void TargetMotion::loadTrajectory() {
   float y = nh_.param<float>("y",0);
   float z = nh_.param<float>("z",0);
   move_ = nh_.param<bool>("move_target",true);
-  acceleration_ = nh_.param<float>("acceleration",10);
+  acceleration_ = nh_.param<float>("acceleration",1);
   delta_t_ = 2.4/acceleration_;
 
   // Get relative waypoint lists for x, y and z
@@ -270,10 +270,6 @@ void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er
   }
 
  }
-
- std::cout << "scale: " << scale << std::endl;
-
-
 
 
  linear_vel = linear_vel*scale;

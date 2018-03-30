@@ -19,6 +19,7 @@
       <k_orbit>2</k_orbit>
       <k_path>3</k_path>
       <chi_infinity>0.7853975</chi_infinity>
+      <update_rate>30</update_rate>
     </plugin>
 
 

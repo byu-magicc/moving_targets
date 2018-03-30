@@ -41,7 +41,7 @@ namespace gazebo
 
     void getCommandError(float& chi_er, float h_er, float& yaw, float& distance);
 
-    void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, math::Vector3& linear_vel, math::Vector3& angular_vel);
+    void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel);
 
     double getValueFromSdf(std::string name);
 
@@ -78,6 +78,7 @@ namespace gazebo
     // target_motion parameters
     bool move_;                  // Indicates if the agent should move or not
     double simTime_d1_ = 0;      // Time step (s)
+    float update_rate_;          //
     float v_;                    // Linear velocity (m/s)
     math::Pose pose_init_;        // Initial pose of agent.
     float acceleration_;

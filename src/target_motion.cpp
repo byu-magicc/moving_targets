@@ -42,6 +42,7 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   params_.k_orbit      = getValueFromSdf("k_orbit");
   params_.k_path       = getValueFromSdf("k_path");
   params_.chi_infinity = getValueFromSdf("chi_infinity");
+  update_rate_         = getValueFromSdf("update_rate");
 
 
   // Init PID controllers
@@ -140,6 +141,13 @@ void TargetMotion::loadTrajectory() {
 
 void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 {
+
+  // calculate the timestep
+   double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
+
+   if (dt > 1.0/update_rate_ || simTime_d1_ == 0) {
+
+   simTime_d1_ = _info.simTime.Double();
   
  
   math::Vector3 linear_vel(0,0,0); 
@@ -149,7 +157,7 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 
   getCommandError(chi_er, h_er, yaw, distance);
 
-  getVelCommands(_info, chi_er, h_er, yaw, distance,linear_vel,angular_vel);
+  getVelCommands(_info, chi_er, h_er, yaw, distance, dt, linear_vel,angular_vel);
   
 
   // Set commands
@@ -158,6 +166,8 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 
 
   PublishState();
+
+   }
 
 
 }
@@ -204,13 +214,9 @@ void TargetMotion::getCommandError(float& chi_er, float h_er, float& yaw, float&
 
 // ------------------------------------------------------------------------
 
-void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, math::Vector3& linear_vel, math::Vector3& angular_vel)
+void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel)
 {
   
-// calculate the timestep
- double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
- simTime_d1_ = _info.simTime.Double();
-
  //
  // calculate angular and linear velocity commands
  //
@@ -323,7 +329,7 @@ double TargetMotion::getValueFromSdf(std::string name) {
   else
     gzerr << "[TargetMotion] Please specify the <" << name << "> element.\n";
     
-  return 0;
+   return 0;
 
 }
 

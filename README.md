@@ -36,6 +36,7 @@ Moves the agent from the initial position to the desired position. Once reached,
 Example setup
 
 ``` 
+<group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="0" />
     <param name="x" type="double" value="1" />
     <param name="y" type="double" value="0" />
@@ -45,6 +46,7 @@ Example setup
     <rosparam param="waypoints_x">[0, 5]</rosparam>
     <rosparam param="waypoints_y">[0, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
+</group>
 ```
 
 ### Waypoints ##
@@ -54,6 +56,7 @@ Moves the agent to the waypoints. Once at the final waypoint, it will loop throu
 Example setup 
 
 ```
+<group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="1" />
     <param name="x" type="double" value="1" />
     <param name="y" type="double" value="0" />
@@ -63,6 +66,7 @@ Example setup
     <rosparam param="waypoints_x">[0, 5, 5, 0, 0]</rosparam>
     <rosparam param="waypoints_y">[0, 0, 5, 5, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0, 0, 0, 0]</rosparam>
+</group>
 ```
 
 ### Circle ##
@@ -72,6 +76,7 @@ Moves the agent in a circle. The only waypoint stated should be [0,0,0];
 Example setup
 
 ```
+<group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="2" />
     <param name="radius" type="double" value="3" />
     <param name="lambda" type="double" value = "-1"/>
@@ -83,6 +88,7 @@ Example setup
     <rosparam param="waypoints_x">[0]</rosparam>
     <rosparam param="waypoints_y">[0]</rosparam>
     <rosparam param="waypoints_z">[0]</rosparam>
+</group>
 ```
 
 ### Elipse ###
@@ -90,6 +96,7 @@ Example setup
 Moves the agent in an elipse. Use only two waypoints. 
 
 ```
+<group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="3" />
     <param name="x" type="double" value="1" />
     <param name="y" type="double" value="0" />
@@ -99,6 +106,7 @@ Moves the agent in an elipse. Use only two waypoints.
     <rosparam param="waypoints_x">[0, 5]</rosparam>
     <rosparam param="waypoints_y">[0, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
+</group>
 ```
 
 ## Use Plugin ##
@@ -117,6 +125,7 @@ The plugin has several parameters that will need to be set.
 | k_orbit      | Gain for orbital trajectory                | float |
 | k_path       | Gain for linear trajectory                 | float |
 | chi_infinity | Gain for linear trajectory                 | float |
+| update_rate  | The target update rate in Hz               | float |
 
 Example setup
 
@@ -131,6 +140,7 @@ Example setup
       <k_orbit>2</k_orbit>
       <k_path>3</k_path>
       <chi_infinity>0.7853975</chi_infinity>
+      <update_rate>30</update_rate>
     </plugin>
 ```
 

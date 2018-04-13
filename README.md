@@ -20,16 +20,14 @@ a complete example see `test.launch`. For information about each parameter read 
 
 | Name            | Description                                                                                        | Type        |
 |-----------------|----------------------------------------------------------------------------------------------------|-------------|
-| trajectory_type | Specifies the type of trajectory goToPoint : 0 waypoints: 1 circle: 2 elipse : 3                   | int         |
-| x               | initial x position in gazebo                                                                       | float       |
-| y               | initial y position in gazebo                                                                       | float       |
-| z               | initial z position in gazebo                                                                       | float       |
+| trajectory_type | Specifies the type of trajectory goToPoint : 0 waypoints: 1 circle: 2 ellipse : 3                  | int         |
+| acceleration    | horizontal acceleration m/s/s                                                                      | float       |
 | v               | horizontal velocity m/s                                                                            | float       |
 | move_target     | indicates if the agent should be moving or not.                                                    | bool        |
-| waypoints_x     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
-| waypoints_y     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
-| waypoints_z     | x-coordiante waypoints relative to starting position. First element must be 0 .                    | float array |
-| lambda          | The direction for circular orbit. The possible values are -1 (counter-clockwise) and 1 (clockwise) | int         |
+| waypoints_x     | x-coordiante waypoints relative to starting position. First element must be 0.                     | float array |
+| waypoints_y     | x-coordiante waypoints relative to starting position. First element must be 0.                     | float array |
+| waypoints_z     | x-coordiante waypoints relative to starting position. First element must be 0.                     | float array |
+| lambda          | The direction for circular orbit. The possible values are -1 (counter-clockwise) and 1 (clockwise).| int         |
 | radius          | The radius of the orbit.                                                                           | float       |
 
 

@@ -78,6 +78,16 @@ void TargetMotion::loadTrajectory() {
   nh_.getParam("waypoints_y", waypoints_y);
   nh_.getParam("waypoints_z", waypoints_z);
 
+  // If there are no waypoints, add one 0 waypoint
+  if (waypoints_x.size() == 0 && waypoints_y.size() == 0 && waypoints_z.size() == 0)
+    waypoints_x.push_back(0);
+
+  // make all waypoint vectors the same size (zero pad)
+  int maxWPs = std::max(waypoints_x.size(), std::max(waypoints_y.size(), waypoints_z.size()));
+  std::fill_n(std::back_inserter(waypoints_x), maxWPs-waypoints_x.size(), 0);
+  std::fill_n(std::back_inserter(waypoints_y), maxWPs-waypoints_y.size(), 0);
+  std::fill_n(std::back_inserter(waypoints_z), maxWPs-waypoints_z.size(), 0);
+
   // Construct a waypoint container
   gzmsg << "waypoints:" << std::endl;
   for (int i=0; i<waypoints_x.size(); i++)

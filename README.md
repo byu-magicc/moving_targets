@@ -7,10 +7,14 @@ This repo contains ROS/Gazebo models and plugins for the purpose of moving lifel
 
 Note that the namespace `targets/<model name>` is hardcoded and that the parameters must be available within the `targets/<model name>` namespace in the `rosparam` server.
 
+## Demo ##
+
+To see it in action, run `roslaunch moving_targets test.launch`.
+
 ## Set up Trajectories ##
 
-There are four types of trajectories that can be created: goToPoint, waypoints, circle, and elipse. You specify the type of trajectory and trajectory parameters in the roslaunch file. For
-a complete example see test.launch. For information about each parameter read the descriptions below. 
+There are four types of trajectories that can be created: `goToPoint`, `waypoints`, `circle`, and `ellipse`. You specify the type of trajectory and trajectory parameters in the roslaunch file. For
+a complete example see `test.launch`. For information about each parameter read the descriptions below. 
 
 ### Parameters ###
 
@@ -35,12 +39,9 @@ Moves the agent from the initial position to the desired position. Once reached,
 
 Example setup
 
-``` 
+```xml
 <group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="0" />
-    <param name="x" type="double" value="1" />
-    <param name="y" type="double" value="0" />
-    <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="1" />
     <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5]</rosparam>
@@ -55,12 +56,9 @@ Moves the agent to the waypoints. Once at the final waypoint, it will loop throu
 
 Example setup 
 
-```
+```xml
 <group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="1" />
-    <param name="x" type="double" value="1" />
-    <param name="y" type="double" value="0" />
-    <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="2" />
     <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5, 5, 0, 0]</rosparam>
@@ -75,14 +73,11 @@ Moves the agent in a circle. The only waypoint stated should be [0,0,0];
 
 Example setup
 
-```
+```xml
 <group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="2" />
     <param name="radius" type="double" value="3" />
     <param name="lambda" type="double" value = "-1"/>
-    <param name="x" type="double" value="1" />
-    <param name="y" type="double" value="0" />
-    <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="2" />
     <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0]</rosparam>
@@ -95,12 +90,9 @@ Example setup
 
 Moves the agent in an elipse. Use only two waypoints. 
 
-```
+```xml
 <group ns="targets/$(arg mover_name)">
     <param name="trajectory_type" type="int" value="3" />
-    <param name="x" type="double" value="1" />
-    <param name="y" type="double" value="0" />
-    <param name="z" type="double" value="0.6"/>
     <param name="v" type="double" value="1" />
     <param name="move_target" type="bool" value="true"/>
     <rosparam param="waypoints_x">[0, 5]</rosparam>
@@ -118,7 +110,7 @@ The plugin has several parameters that will need to be set.
 |--------------|--------------------------------------------|-------|
 | kpPsi        | Heading proportional gain for PD control   | float |
 | kpZ          | Altitude proportional gain for PD control  | float |
-| kdPsid       | Heading differential gain for PD control   | foat  |
+| kdPsid       | Heading differential gain for PD control   | float |
 | kdZ          | Altitude differential gain for PD control  | float |
 | maxVPsi      | Maximum velocity about z axis              | float |
 | maxVZ        | Maximum linear velocity parallel to z axis | float |
@@ -129,31 +121,21 @@ The plugin has several parameters that will need to be set.
 
 Example setup
 
+```xml
+<plugin name="TargetMotion" filename="libTargetMotion.so">
+  <kpPsi>2</kpPsi>
+  <kpZ>2</kpZ>      
+  <kdPsi>1</kdPsi>
+  <kdZ>1</kdZ>
+  <maxVPsi>1</maxVPsi>
+  <maxVZ>1</maxVZ>
+  <k_orbit>2</k_orbit>
+  <k_path>3</k_path>
+  <chi_infinity>0.7853975</chi_infinity>
+  <update_rate>30</update_rate>
+</plugin>
 ```
-    <plugin name="TargetMotion" filename="libTargetMotion.so">
-      <kpPsi>2</kpPsi>
-      <kpZ>2</kpZ>      
-      <kdPsi>1</kdPsi>
-      <kdZ>1</kdZ>
-      <maxVPsi>1</maxVPsi>
-      <maxVZ>1</maxVZ>
-      <k_orbit>2</k_orbit>
-      <k_path>3</k_path>
-      <chi_infinity>0.7853975</chi_infinity>
-      <update_rate>30</update_rate>
-    </plugin>
-```
 
-## MovingTargets Service ##
+## Exposed Services ##
 
-The plugin contains a ROS server that allows the user to reset the agent at any time, or to tell the agent to stop or move. The service is defined below.
-
-``` 
-# Service message for moving targets
-
-bool reset_target   # If true, the target will start over at its initial trajectory
-bool move_target    # If true, the target will move
-
----
-
-```
+The plugin advertises a ROS service that allows the user to reset the agent at any time, or to tell the agent to stop or move. The service is defined in `srv/MovingTargets.srv`.

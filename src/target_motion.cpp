@@ -101,7 +101,7 @@ void TargetMotion::loadTrajectory() {
   // velocity
   v_ = nh_.param<float>("v", 1);
 
-  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "elipse"};
+  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse"};
 
 
   // Orbit trajectory

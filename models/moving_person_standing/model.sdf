@@ -8,27 +8,17 @@
       <pose>0 0 0 0 0 1.5708</pose>
     </include>
 
-    <link name="feet">
-      <inertial>
-        <pose>0 0 0 0 0 0</pose>
-        <mass>500</mass>
-        <inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia>
-      </inertial>
-    </link>
-
-    <joint type="fixed" name="motion_connection">
-      <pose>0 0 -0.95 0 0 0</pose>
-      <parent>feet</parent>
-      <child>person_standing::link</child>
-    </joint>
-
     <plugin name="TargetMotion" filename="libTargetMotion.so">
-      <baseLink>feet</baseLink>
-      <kpXY>50000</kpXY>
-      <kpOmega>10000</kpOmega>
-      <maxFXY>6000</maxFXY>
-      <maxFOmega>6000</maxFOmega>
-      <friction>5</friction>
+      <kpPsi>2</kpPsi>
+      <kpZ>2</kpZ>      
+      <kdPsi>1</kdPsi>
+      <kdZ>1</kdZ>
+      <maxVPsi>1</maxVPsi>
+      <maxVZ>1</maxVZ>
+      <k_orbit>2</k_orbit>
+      <k_path>3</k_path>
+      <chi_infinity>0.7853975</chi_infinity>
+      <update_rate>30</update_rate>
     </plugin>
 
   </model>

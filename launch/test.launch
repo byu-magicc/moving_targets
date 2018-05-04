@@ -18,7 +18,7 @@
         <arg name="model"   value="$(find moving_targets)/models/moving_person_walking/model.sdf" />
         <arg name="x"       value="1"/>
         <arg name="y"       value="0"/>
-        <arg name="z"       value="0.6"/>
+        <arg name="z"       value="0"/>
         <arg name="yaw"     value="0"/>
     </include>
 
@@ -27,9 +27,6 @@
         <!-- Trajectory type: goToPoint -->
         <group if="0">
             <param name="trajectory_type" type="int" value="0" />
-            <param name="x" type="double" value="1" />
-            <param name="y" type="double" value="0" />
-            <param name="z" type="double" value="0.6"/>
             <param name="v" type="double" value="1" />
             <param name="move" type="bool" value="true"/>
             <param name="acceleration" type="double" value="10"/>
@@ -41,9 +38,6 @@
         <!-- Trajectory type: waypoints -->
         <group if="1">
             <param name="trajectory_type" type="int" value="1" />
-            <param name="x" type="double" value="1" />
-            <param name="y" type="double" value="0" />
-            <param name="z" type="double" value="0.6"/>
             <param name="v" type="double" value="2" />
             <param name="move" type="bool" value="true"/>
             <param name="acceleration" type="double" value="1"/>
@@ -57,9 +51,6 @@
             <param name="trajectory_type" type="int" value="2" />
             <param name="radius" type="double" value="3" />
             <param name="lambda" type="double" value = "-1"/>
-            <param name="x" type="double" value="1" />
-            <param name="y" type="double" value="0" />
-            <param name="z" type="double" value="0.6"/>
             <param name="v" type="double" value="2" />
             <param name="move" type="bool" value="true"/>
             <param name="acceleration" type="double" value="10"/>
@@ -71,9 +62,6 @@
         <!-- Trajectory type: elipse -->
         <group if="0">
             <param name="trajectory_type" type="int" value="3" />
-            <param name="x" type="double" value="1" />
-            <param name="y" type="double" value="0" />
-            <param name="z" type="double" value="0.6"/>
             <param name="v" type="double" value="1" />
             <param name="move" type="bool" value="true"/>
             <param name="acceleration" type="double" value="10"/>

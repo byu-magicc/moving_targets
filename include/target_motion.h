@@ -73,14 +73,14 @@ namespace gazebo
 
     // Agent's waypoints
     motion::waypoints_t waypoints_curr_; // Current waypoints
-    motion::waypoints_t waypoints_init_;  // Initial waypoints
+    motion::waypoints_t waypoints_init_; // Initial waypoints
 
     // target_motion parameters
     bool move_;                  // Indicates if the agent should move or not
     double simTime_d1_ = 0;      // Time step (s)
     float update_rate_;          //
     float v_;                    // Linear velocity (m/s)
-    math::Pose pose_init_;        // Initial pose of agent.
+    math::Pose pose_init_;       // Initial pose of agent.
     float acceleration_;
 
 
@@ -98,7 +98,7 @@ namespace gazebo
     common::PID altitudePID_;
 
     // speed scale use to slow down
-    float delta_t_ ;
+    float delta_t_;
 
   };
 

@@ -1,279 +1,369 @@
-#include <memory>
-#include <stdio.h>
-
-#include <boost/bind.hpp>
-
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/physics.hh>
-#include <gazebo/common/common.hh>
-
-#include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
-
-#include "unicycle_planner.h"
+#include "target_motion.h"
 
 namespace gazebo
 {
-  class TargetMotion : public ModelPlugin
+
+// void TargetMotion::Load(rendering::VisualPtr _parent, sdf::ElementPtr _sdf)
+// {
+//   visual_ = _parent;
+// }
+
+// ----------------------------------------------------------------------------
+
+void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
+{
+  // Store the pointers to the model and to the sdf
+  model_ = _parent;
+  sdf_pointer_ = _sdf;
+
+  // Turn off gravity
+  model_->SetGravityMode(false);
+
+
+  
+  // Connect to ROS
+  nh_ = ros::NodeHandle("targets/" + model_->GetName());
+
+  // Create ROS publishers
+  state_ = nh_.advertise<nav_msgs::Odometry>("state", 10);
+
+  // Create the service
+  target_srv_ = nh_.advertiseService("moving_target", &TargetMotion::targetService, this);
+
+
+  //
+  // Get SDF Values
+  //
+  double kpPsi         = getValueFromSdf("kpPsi");
+  double kdPsi         = getValueFromSdf("kdPsi");
+  double kpZ           = getValueFromSdf("kpZ");
+  double kdZ           = getValueFromSdf("kdZ");
+  double maxVPsi       = getValueFromSdf("maxVPsi");
+  double maxVZ         = getValueFromSdf("maxVZ");
+  params_.k_orbit      = getValueFromSdf("k_orbit");
+  params_.k_path       = getValueFromSdf("k_path");
+  params_.chi_infinity = getValueFromSdf("chi_infinity");
+  update_rate_         = getValueFromSdf("update_rate");
+
+
+  // Init PID controllers
+  headingPID_.Init(kpPsi, 0, kdPsi, 0,0, maxVPsi, -maxVPsi);
+  altitudePID_.Init(kpZ, 0, kdZ, 0,0, maxVZ, -maxVZ);
+
+  // Capture the initial pose of the mover
+  pose_init_ = model_->GetWorldPose();
+
+  // Load trajectory
+  loadTrajectory();
+
+  // Listen to the update event. This event is broadcast every simulation iteration.
+  updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::loadTrajectory() {
+
+  //
+  // Get ROS parameters
+  // 
+
+  move_ = nh_.param<bool>("move_target", true);
+  acceleration_ = nh_.param<float>("acceleration", 1);
+  delta_t_ = 2.4/acceleration_;
+
+  // Get relative waypoint lists for x, y and z
+  std::vector<double> waypoints_x, waypoints_y, waypoints_z;
+  nh_.getParam("waypoints_x", waypoints_x);
+  nh_.getParam("waypoints_y", waypoints_y);
+  nh_.getParam("waypoints_z", waypoints_z);
+
+  // If there are no waypoints, add one 0 waypoint
+  if (waypoints_x.size() == 0 && waypoints_y.size() == 0 && waypoints_z.size() == 0)
+    waypoints_x.push_back(0);
+
+  // make all waypoint vectors the same size (zero pad)
+  int maxWPs = std::max(waypoints_x.size(), std::max(waypoints_y.size(), waypoints_z.size()));
+  std::fill_n(std::back_inserter(waypoints_x), maxWPs-waypoints_x.size(), 0);
+  std::fill_n(std::back_inserter(waypoints_y), maxWPs-waypoints_y.size(), 0);
+  std::fill_n(std::back_inserter(waypoints_z), maxWPs-waypoints_z.size(), 0);
+
+  // Construct a waypoint container
+  gzmsg << "waypoints:" << std::endl;
+  for (int i=0; i<waypoints_x.size(); i++)
   {
-  public:
+    // translate body-relative waypoints to the world frame
+    motion::coord_t waypoint(pose_init_.pos.x + waypoints_x[i],
+                             pose_init_.pos.y + waypoints_y[i],
+                             pose_init_.pos.z + waypoints_z[i]);
+    waypoints_init_.push_back(waypoint);
 
-    double getValueFromSdf(std::string name)
+    gzmsg << "\t" << waypoints_init_[i] << std::endl;
+  }
+
+  // trajectory type 
+  params_.traj = nh_.param<int>("trajectory_type", 0);
+
+  // Orbit circle parameters
+  params_.row = nh_.param<float>("radius", 2);
+  params_.lambda = nh_.param<float>("lambda", 1);
+
+  // velocity
+  v_ = nh_.param<float>("v", 1);
+
+  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse"};
+
+
+  // Orbit trajectory
+  if (params_.traj == 2)
+    follower_ = std::make_shared<motion::Orbit>();
+  else if (params_.traj == 0 || params_.traj == 1 || params_.traj == 3)
+    follower_ = std::make_shared<motion::StraightLine>();
+  else
+    gzerr << "[TargetMotion] Trajectory type " << params_.traj << " is undefined.\n";
+  
+  gzmsg << "[TargetMotion] Generated a " << traj_types[params_.traj] << " trajectory for " << model_->GetName() << ".\n";
+
+  gzmsg << "params: " << "\n\tk_orbit:      " << params_.k_orbit
+                      << "\n\trow:          " << params_.row
+                      << "\n\tlambda:       " << params_.lambda
+                      << "\n\tk_path:       " << params_.k_path
+                      << "\n\tchi_infinity: " << params_.chi_infinity << std::endl;
+
+
+  follower_->set_parameters(params_);
+
+  // Set current waypoints
+  waypoints_curr_ = waypoints_init_;
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
+{
+
+  // calculate the timestep
+  double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
+
+  if (dt > 1.0/update_rate_ || simTime_d1_ == 0)
+  {  
+   
+    math::Vector3 linear_vel(0, 0, 0); 
+    math::Vector3 angular_vel(0, 0, 0);
+
+    float chi_er, h_er, yaw, distance;
+
+    getCommandError(chi_er, h_er, yaw, distance);
+
+    getVelCommands(_info, chi_er, h_er, yaw, distance, dt, linear_vel, angular_vel);
+    
+
+    // Set commands
+    model_->SetLinearVel(linear_vel);
+    model_->SetAngularVel(angular_vel);
+
+
+    // capture the current simulation time for next iteration
+    simTime_d1_ = _info.simTime.Double();
+
+    PublishState();
+  }
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::getCommandError(float& chi_er, float h_er, float& yaw, float& distance) {
+
+  // Get world pose
+  math::Pose pose = model_->GetWorldPose();
+
+  // Get position and pack into type motion::coord_t
+  math::Vector3 position = pose.pos;
+  motion::coord_t pos(position.x, position.y, position.z);
+
+  // Get Euler angles
+  math::Vector3 rot = pose.rot.GetAsEuler();
+
+  // Manage waypoints
+  distance = radius_manager_.manage_waypoints(pos, waypoints_curr_, params_.traj);
+
+  // Heading
+  yaw = rot.z;
+
+  // Get heading and altitude commands
+  motion::FollowerCommands commands;
+  if (params_.traj == 2)
+    commands = follower_->orbit_follower(waypoints_curr_[0], pos, yaw);
+  else
+    commands = follower_->line_follower(waypoints_curr_[0], waypoints_curr_[1]-waypoints_curr_[0], pos, yaw);
+
+  // calculate heading and altitude errors
+  h_er = std::get<2>(pos) - commands.h_c;
+  chi_er =  yaw - commands.chi_c;
+
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel)
+{
+
+  //
+  // calculate angular and linear velocity commands
+  //
+
+  double vz = altitudePID_.Update(h_er, dt);
+  double wz = headingPID_.Update(chi_er, dt);
+
+  // If goToPoint trajectory and we have arrived, then
+  // trigger the exponential slowing down and stop moving
+  if (params_.traj == 0 && distance < 0.3) move_ = false;
+
+  //
+  // Rotate commands into the current frame
+  //
+
+  // linear velocity command
+  math::Vector3 vel (v_, 0, vz);
+
+  // Rotation Matrix
+  math::Matrix3 rotz(cos(yaw), -sin(yaw), 0.0,
+                     sin(yaw),  cos(yaw), 0.0,
+                     0.0,       0.0,      1.0);  
+
+  // Rotate linear commands into current frame
+  linear_vel = rotz*vel;
+
+  // Get angular vel
+  angular_vel = math::Vector3(0, 0, wz);
+
+
+  float scale;
+  if (move_)
+  {
+
+    delta_t_ -= dt;
+
+    scale = std::exp(-delta_t_*acceleration_);
+
+    if (scale > 1)
     {
-      if (sdf_pointer->HasElement(name))
-        return sdf_pointer->GetElement(name)->Get<double>();
-      else
-        gzerr << "[TargetMotion] Please specify the <" << name << "> element.\n";
-        
-      return 0;
+      scale = 1;
+      delta_t_ = 0;
     }
 
-    // ------------------------------------------------------------------------
+  }
+  else
+  {
 
-    void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
+    delta_t_ += dt;
+
+    scale = std::exp(-delta_t_*acceleration_);
+
+    if (scale < 0.1)
     {
-      // Store the pointers to the model and to the sdf
-      model = _parent;
-      sdf_pointer = _sdf;
-
-      //
-      // Find the link to apply force to
-      //
-
-      std::string link_name;
-      if (sdf_pointer->HasElement("baseLink"))
-        link_name = sdf_pointer->GetElement("baseLink")->Get<std::string>();
-      else
-        gzthrow("[TargetMotion] Please specify a <baseLink> element.");
-
-      link = model->GetLink(link_name);
-      if (link == nullptr)
-        gzthrow("[TargetMotion] Could not find specified link \"" << link_name << "\".");
-
-      //
-      // Get SDF Values
-      //
-
-      kpXY      = getValueFromSdf("kpXY");
-      kpOmega   = getValueFromSdf("kpOmega");
-      maxFXY    = getValueFromSdf("maxFXY");
-      maxFOmega = getValueFromSdf("maxFOmega");
-
-      //
-      // Initialize the unicycle motion planner
-      //
-
-      unicycle = std::unique_ptr<motion::UnicyclePlanner>(new motion::UnicyclePlanner());
-
-      //
-      // Connect to ROS
-      //
-
-      nh = ros::NodeHandle("targets/" + model->GetName());
-
-      // Load the trajectory parameters based on the desired type 
-      int traj = nh.param<int>("trajectory_type", 0);
-      if (traj == 0)
-      { // point
-
-        double x = nh.param<double>("x", 5);
-        double y = nh.param<double>("y", 5);
-
-        gzmsg << "[TargetMotion] Generated a goToPoint trajectory for " << model->GetName() << ".\n";
-        unicycle->goToPoint(x, y);
-      }
-      else if (traj == 1)
-      { // waypoints
-
-        // Get origin of waypoints
-        double x = nh.param<double>("x", 0);
-        double y = nh.param<double>("y", 0);
-
-        // Get waypoint lists for x and y
-        std::vector<double> waypoints_x, waypoints_y;
-        nh.getParam("waypoints_x", waypoints_x);
-        nh.getParam("waypoints_y", waypoints_y);
-
-        // Construct a waypoint container
-        motion::waypoints_t waypoints;
-        for (int i=0; i<waypoints_x.size(); i++)
-          waypoints.push_back({ x + waypoints_x[i], y + waypoints_y[i]}); // translate waypoints to origin
-
-        double vx = nh.param<double>("vx", 1);
-        double vy = nh.param<double>("vy", 1);
-
-        gzmsg << "[TargetMotion] Generated a waypoint trajectory for " << model->GetName() << ".\n";
-        unicycle->generateWaypoints(waypoints, {vx, vy});
-      }
-      else if (traj == 2)
-      { // circle
-
-        double radius = nh.param<double>("radius", 2);
-        double x = nh.param<double>("x", 5);
-        double y = nh.param<double>("y", 5);
-
-        gzmsg << "[TargetMotion] Generated a circle trajectory for " << model->GetName() << ".\n";
-        unicycle->generateCircle(radius, {x, y});
-      }
-      else if (traj == 3)
-      { // lemniscate (figure-8)
-
-        double a = nh.param<double>("a", 2);
-        double x = nh.param<double>("x", 5);
-        double y = nh.param<double>("y", 5);
-
-        gzmsg << "[TargetMotion] Generated a lemniscate trajectory for " << model->GetName() << ".\n";
-        unicycle->generateLemniscate(a, {x, y});
-      }
-      else
-      { // undefined
-        gzerr << "[TargetMotion] Trajectory type " << traj << " is undefined.\n";
-      }
-
-      // Create ROS publishers
-      state = nh.advertise<nav_msgs::Odometry>("state", 10);
-
-      //
-      // Initialize low-level PID controllers
-      //
-
-      forcePID.Init(kpXY, 100000, 0, 100000, -100000, maxFXY, -maxFXY);
-      torquePID.Init(kpOmega, 1000, 0, 1000, -1000, maxFOmega, -maxFOmega);
-
-      // Listen to the update event. This event is broadcast every simulation iteration.
-      updateConnection = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
+      delta_t_ = 2.4/acceleration_;  
+      scale = 0;
     }
 
-    // ------------------------------------------------------------------------
+  }
 
-    void OnUpdate(const common::UpdateInfo& _info)
-    {
-      // calculate the timestep
-      double dt = (simTime_d1_ == 0) ? 0.0001 : _info.simTime.Double() - simTime_d1_;
-      simTime_d1_ = _info.simTime.Double();
 
-      // Update the unicycle motion planner with the current state of the robot
-      // as integrated / propagated from the Gazebo physics engine
-      math::Vector3 pos = link->GetWorldPose().pos;
-      math::Vector3 rot = link->GetWorldPose().rot.GetAsEuler();
-      unicycle->updateState(pos.x, pos.y, rot.z);
+  linear_vel = linear_vel*scale;
+  angular_vel = angular_vel*scale;
+}
 
-      // Use the unicycle motion planner to generate speed and heading rate commands
-      double v, w;
-      unicycle->getCommands(dt, v, w);
+// ------------------------------------------------------------------------
 
-      // Command the Gazebo robot to achieve the desired speed and heading rate
-      VelController(v, w, dt);
+// void TargetMotion::drawWaypoins(const motion::waypoints_t waypoints) {
 
-      // publish mover's state odometry
-      nav_msgs::Odometry odom;
-      odom.header.stamp.sec = model->GetWorld()->GetSimTime().sec;
-      odom.header.stamp.nsec = model->GetWorld()->GetSimTime().nsec;
-      odom.header.frame_id = "map";
-      odom.child_frame_id = "target_" + model->GetName();
-      odom.pose.pose.position.x     = model->GetWorldPose().pos.x;
-      odom.pose.pose.position.y     = model->GetWorldPose().pos.y;
-      odom.pose.pose.position.z     = model->GetWorldPose().pos.z;
-      odom.pose.pose.orientation.w  = model->GetWorldPose().rot.w;
-      odom.pose.pose.orientation.x  = model->GetWorldPose().rot.x;
-      odom.pose.pose.orientation.y  = model->GetWorldPose().rot.y;
-      odom.pose.pose.orientation.z  = model->GetWorldPose().rot.z;
-      odom.twist.twist.linear.x     = model->GetRelativeLinearVel().x;
-      odom.twist.twist.linear.y     = model->GetRelativeLinearVel().y;
-      odom.twist.twist.linear.z     = model->GetRelativeLinearVel().z;
-      odom.twist.twist.angular.x    = model->GetRelativeAngularVel().x;
-      odom.twist.twist.angular.y    = model->GetRelativeAngularVel().y;
-      odom.twist.twist.angular.z    = model->GetRelativeAngularVel().z;
-      state.publish(odom);
-    }
+//   dynamic_lines_ = visual_->CreateDynamicLine();
 
-    // ------------------------------------------------------------------------
+//   std::cout << "size: " << waypoints.size() << std::endl;
 
-    void VelController(double vel, double omega, double dt)
-    {
-      // Apply forces to the model (using P control) to achieve
-      // the commanded linear and angular velocities.
+//   for (int i = 0; i < waypoints.size(); i++) {
 
-      // Check if robot has fallen down
-      if (link->GetWorldPose().pos.z > 0.1 || 
-          std::abs(link->GetWorldPose().rot.GetAsEuler().x) > 0.1 ||
-          std::abs(link->GetWorldPose().rot.GetAsEuler().y) > 0.1)
-      {
-        // gzerr << "I've fallen and can't get up!\n";
-        LifeCall(); // Help Mrs. Fletcher stand up
-        return;
-      }
+//     dynamic_lines_->AddPoint(
+//       math::Vector3(
+//         std::get<0>(waypoints[i]), 
+//         std::get<1>(waypoints[i]), 
+//         std::get<2>(waypoints[i]))
+//       ); 
 
-      // speed --> force in body x-axis
-      double c = 2.0/vel; // inverse velocity clamp
-      double linearVel_error = math::clamp(link->GetRelativeLinearVel().x - vel, -c, c);
-      double Fx = forcePID.Update(linearVel_error, dt);
-      // if (Fx == maxFXY) gzerr << "XY clamped (" << Fx << ") !!\n";
-      link->AddRelativeForce(math::Vector3(Fx, 0, 0));
 
-      // Heading rate --> angular velocity
-      double angularVel_error = link->GetRelativeAngularVel().z - omega;
-      double Fw = torquePID.Update(angularVel_error, dt);
-      // if (Fw == maxFOmega) gzerr << "Omega clamped (" << Fw << ") !!\n";
-      link->AddRelativeTorque(math::Vector3(0, 0, Fw));
+//     std::cout << "here" << std::endl;
+//   }
 
-      // gzmsg << "Linear Velocity (" << link->GetRelativeLinearVel().x << ") Error: " << vel - link->GetRelativeLinearVel().x << "\t" << "Force: " << Fx << "\n";
-      // gzmsg << "Angular Velocity (" << link->GetRelativeAngularVel().z << ") Error: " << omega - link->GetRelativeAngularVel().z << "\t" << "Torque: " << Fw << "\n";
-    }
+//   dynamic_lines_->setMaterial("Gazebo/Purple");
+//   dynamic_lines_->setVisibilityFlags(GZ_VISIBILITY_GUI);
+//   dynamic_lines_->setVisible(true);
 
-    // ------------------------------------------------------------------------
+//   // dynamic_lines_.Update();
 
-    void LifeCall()
-    {
-      // start with the current pose
-      math::Pose resetPose = link->GetWorldPose();
-      resetPose.pos.z = 0;
+// }
 
-      // zero out the roll, pitch orientations
-      math::Vector3 euler = resetPose.rot.GetAsEuler();
-      euler.x = 0; euler.y = 0;
-      resetPose.rot.SetFromEuler(euler);
 
-      // teleport to a standing position
-      link->SetWorldPose(resetPose);
+// ------------------------------------------------------------------------
 
-      // Because we just teleported the model, reset the
-      // vel, accel, force, torque on the link ...
-      link->ResetPhysicsStates();
 
-      // ... and the PIDs
-      forcePID.Reset();
-      torquePID.Reset();
-    }
+double TargetMotion::getValueFromSdf(std::string name) {
 
-    // ------------------------------------------------------------------------
+  if (sdf_pointer_->HasElement(name))
+    return sdf_pointer_->GetElement(name)->Get<double>();
+  else
+    gzerr << "[TargetMotion] Please specify the <" << name << "> element.\n";
+    
+   return 0;
 
-  private:
-    // Pointer to the model
-    sdf::ElementPtr sdf_pointer;
-    physics::ModelPtr model;
-    physics::LinkPtr link;
-    event::ConnectionPtr updateConnection;
+}
 
-    double simTime_d1_ = 0;
+// ------------------------------------------------------------------------
 
-    common::PID forcePID;
-    common::PID torquePID;
+bool TargetMotion::targetService(moving_targets::MovingTargets::Request &req, moving_targets::MovingTargets::Response &res) {
 
-    ros::Publisher state;
+  move_ = req.move;
 
-    // parameters
-    double kpXY;
-    double kpOmega;
-    double maxFXY;
-    double maxFOmega;
+  // Reset the agent to initial pose and reset the waypoints
+  if (req.reset == true) {
 
-    // ROS stuff
-    ros::NodeHandle nh;
+    waypoints_curr_ = waypoints_init_;
+    model_->SetWorldPose(pose_init_);
 
-    std::unique_ptr<motion::UnicyclePlanner> unicycle;
-  };
+    // Reset PID controllers
+    headingPID_.Reset();
+    altitudePID_.Reset();
 
-  // Register this plugin with the simulator
-  GZ_REGISTER_MODEL_PLUGIN(TargetMotion)
+    delta_t_ = 2.4/acceleration_;
+  }
+
+  return true;
+
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::PublishState() {
+
+  // publish mover's state odometry
+  nav_msgs::Odometry odom;
+  odom.header.stamp.sec = model_->GetWorld()->GetSimTime().sec;
+  odom.header.stamp.nsec = model_->GetWorld()->GetSimTime().nsec;
+  odom.header.frame_id = "map";
+  odom.child_frame_id = "target_" + model_->GetName();
+  odom.pose.pose.position.x     = model_->GetWorldPose().pos.x;
+  odom.pose.pose.position.y     = model_->GetWorldPose().pos.y;
+  odom.pose.pose.position.z     = model_->GetWorldPose().pos.z;
+  odom.pose.pose.orientation.w  = model_->GetWorldPose().rot.w;
+  odom.pose.pose.orientation.x  = model_->GetWorldPose().rot.x;
+  odom.pose.pose.orientation.y  = model_->GetWorldPose().rot.y;
+  odom.pose.pose.orientation.z  = model_->GetWorldPose().rot.z;
+  odom.twist.twist.linear.x     = model_->GetRelativeLinearVel().x;
+  odom.twist.twist.linear.y     = model_->GetRelativeLinearVel().y;
+  odom.twist.twist.linear.z     = model_->GetRelativeLinearVel().z;
+  odom.twist.twist.angular.x    = model_->GetRelativeAngularVel().x;
+  odom.twist.twist.angular.y    = model_->GetRelativeAngularVel().y;
+  odom.twist.twist.angular.z    = model_->GetRelativeAngularVel().z;
+  state_.publish(odom);
+}
+
 }

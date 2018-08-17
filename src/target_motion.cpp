@@ -172,7 +172,7 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 
 // ------------------------------------------------------------------------
 
-void TargetMotion::getCommandError(float& chi_er, float h_er, float& yaw, float& distance) {
+void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float& distance) {
 
   // Get world pose
   math::Pose pose = model_->GetWorldPose();

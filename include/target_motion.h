@@ -39,7 +39,7 @@ namespace gazebo
 
     void OnUpdate(const common::UpdateInfo& _info);
 
-    void getCommandError(float& chi_er, float h_er, float& yaw, float& distance);
+    void getCommandError(float& chi_er, float& h_er, float& yaw, float& distance);
 
     void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel);
 

@@ -55,6 +55,9 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Load trajectory
   loadTrajectory();
 
+  // Load path manager
+  loadManager();
+
   // Listen to the update event. This event is broadcast every simulation iteration.
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
 }
@@ -150,6 +153,25 @@ void TargetMotion::loadTrajectory() {
 
 // ------------------------------------------------------------------------
 
+void TargetMotion::loadManager() {
+
+  // manager type 
+  bool half_plane = nh_.param<bool>("half_plane_manager", false);
+
+  if (half_plane) {
+    manager_ = std::unique_ptr<motion::HalfPlaneManager>(new motion::HalfPlaneManager());
+  } else {
+    manager_ = std::unique_ptr<motion::RadiusManager>(new motion::RadiusManager());
+  }
+
+  // goToPoint only goes to point once
+  // random walk manages its own waypoints
+  bool should_cycle = (params_.traj != 0 && params_.traj != 4);
+  manager_->set_cycling(should_cycle);
+}
+
+// ------------------------------------------------------------------------
+
 void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 {
 
@@ -196,7 +218,7 @@ void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float
   math::Vector3 rot = pose.rot.GetAsEuler();
 
   // Manage waypoints
-  distance = radius_manager_.manage_waypoints(pos, waypoints_curr_, params_.traj);
+  bool wp_reached = manager_->manage_waypoints(pos, waypoints_curr_, distance);
 
   // Heading
   yaw = rot.z;
@@ -206,7 +228,7 @@ void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float
   if (params_.traj == 2)
     commands = follower_->orbit_follower(waypoints_curr_[0], pos, yaw);
   else if (params_.traj == 4)
-    commands = follower_->random_walk(pos, yaw);
+    commands = follower_->random_walk(waypoints_curr_, wp_reached, pos, yaw);
   else
     commands = follower_->line_follower(waypoints_curr_[0], waypoints_curr_[1]-waypoints_curr_[0], pos, yaw);
 

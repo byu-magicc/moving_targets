@@ -1,9 +1,9 @@
 #pragma once
 
 #define _USE_MATH_DEFINES
+#include <math.h>
 
 #include "waypoint.h"
-#include "math.h"
 
 namespace motion {
 
@@ -39,7 +39,7 @@ namespace motion {
 
         virtual FollowerCommands orbit_follower(const coord_t& c, const coord_t& p, const double chi) {}
 
-        virtual FollowerCommands random_walk(const coord_t& p, const double& chi) {}
+        virtual FollowerCommands random_walk(waypoints_t& waypoints, bool wp_reached, const coord_t& p, const double& chi) {}
 
         virtual void set_parameters(const FollowerParams& params) = 0;
     };

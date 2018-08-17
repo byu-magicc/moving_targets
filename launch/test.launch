@@ -73,6 +73,7 @@
             <param name="v" type="double" value="2" />
             <param name="move" type="bool" value="true"/>
             <param name="acceleration" type="double" value="1"/>
+            <param name="half_plane" type="bool" value="true"/>
             <rosparam param="waypoints_x">[-5, 5]</rosparam>
             <rosparam param="waypoints_y">[-5, 5]</rosparam>
             <rosparam param="waypoints_z">[0, 0]</rosparam>

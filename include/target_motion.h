@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <stdio.h>
+#include <algorithm>
 
 #include <boost/bind.hpp>
 
@@ -15,16 +16,21 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 
+#include <Eigen/Dense>
+
+#include "waypoint.h"
+
+#include "path_manager/base_manager.h"
 #include "path_manager/radius_manager.h"
+#include "path_manager/half_plane_manager.h"
+
 #include "path_follower/base_follower.h"
 #include "path_follower/straight_line.h"
 #include "path_follower/orbit.h"
 #include "path_follower/random_walk.h"
-#include "moving_targets/MovingTargets.h"
-#include "waypoint.h"
 
-#include <algorithm>
-#include <Eigen/Dense>
+#include "moving_targets/MovingTargets.h"
+
 
 namespace gazebo
 {
@@ -35,8 +41,6 @@ namespace gazebo
     void Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf);
 
     // void Load(rendering::VisualPtr _parent, sdf::ElementPtr _sdf);
-
-    void loadTrajectory();
 
     void OnUpdate(const common::UpdateInfo& _info);
 
@@ -53,24 +57,18 @@ namespace gazebo
     // Publish movers state to ROS
     void PublishState();
 
-
-
-
-
   private:
     // Gazebo stuff
     physics::ModelPtr model_;                // Ptr to model
     sdf::ElementPtr sdf_pointer_;            // Ptr to sdf
     event::ConnectionPtr updateConnection_;  // Ptr to update function
 
-
     // Path manager
-    motion::RadiusManager radius_manager_;
+    std::unique_ptr<motion::BaseManager> manager_;
 
     // Path follower
     std::shared_ptr<motion::BaseFollower> follower_;
     motion::FollowerParams params_;
-
 
     // Agent's waypoints
     motion::waypoints_t waypoints_curr_; // Current waypoints
@@ -83,8 +81,6 @@ namespace gazebo
     float v_;                    // Linear velocity (m/s)
     math::Pose pose_init_;       // Initial pose of agent.
     float acceleration_;
-
-
 
     // Used to draw waypoints
     // rendering::DynamicLines *dynamic_lines_;
@@ -100,6 +96,9 @@ namespace gazebo
 
     // speed scale use to slow down
     float delta_t_;
+
+    void loadTrajectory();
+    void loadManager();
 
   };
 

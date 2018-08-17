@@ -1,5 +1,5 @@
 /**
- * @file random_walk.h
+ * @file random_walk.cpp
  * @author Parker Lusk <parkerclusk@gmail.com>
  */
 
@@ -30,24 +30,29 @@ RandomWalk::RandomWalk(const coord_t& origin, const waypoints_t& bbox) {
 
 //----------------------------------------------------------------------
 
-FollowerCommands RandomWalk::random_walk(const coord_t& p, const double& chi) {
+FollowerCommands RandomWalk::random_walk(waypoints_t& waypoints, bool wp_reached, const coord_t& p, const double& chi) {
 
     // calculate distance error
-    auto wp_diff = waypoint_next_-waypoint_current_;
+    auto wp_diff = waypoint_curr_-waypoint_prev_;
 
     // generate commands using a standard straight line waypoint follower
-    auto commands = straight_line_->line_follower(waypoint_current_, wp_diff, p, chi);
+    auto commands = straight_line_->line_follower(waypoint_prev_, wp_diff, p, chi);
 
-    // check if we should step waypoints for next time
-    // (i.e., are we there yet?)
-    auto pos_error = waypoint_next_ - p;
-    if (get_magnitude(pos_error) < rho_) {
-        waypoint_current_ = waypoint_next_;
+    if (wp_reached) {
+        waypoint_prev_ = waypoint_curr_;
+        waypoint_curr_ = waypoint_next_;
         waypoint_next_ = sample_waypoint();
 
         std::cout << std::endl;
-        std::cout << "WP Next: " << waypoint_next_ << std::endl;
+        std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
         std::cout << std::endl;
+    }
+
+    if (wp_reached || waypoints.size() < 3) {
+        waypoints.clear();
+        waypoints.push_back(waypoint_prev_);
+        waypoints.push_back(waypoint_curr_);
+        waypoints.push_back(waypoint_next_);
     }
 
     return commands;
@@ -56,7 +61,6 @@ FollowerCommands RandomWalk::random_walk(const coord_t& p, const double& chi) {
 //----------------------------------------------------------------------
 
 void RandomWalk::set_parameters(const FollowerParams& params) {
-    rho_ = params.rho;
     straight_line_->set_parameters(params);
 }
 
@@ -65,15 +69,17 @@ void RandomWalk::set_parameters(const FollowerParams& params) {
 coord_t RandomWalk::initialize() {
 
     // sample two waypoints
-    waypoint_current_ = sample_waypoint();
+    waypoint_prev_ = sample_waypoint();
+    waypoint_curr_ = sample_waypoint();
     waypoint_next_ = sample_waypoint();
 
     std::cout << std::endl;
-    std::cout << "WP Current: " << waypoint_current_ << std::endl;
-    std::cout << "WP Next: " << waypoint_next_ << std::endl;
+    std::cout << "WP Previous (init): " << waypoint_prev_ << std::endl;
+    std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
+    std::cout << "WP Next Goal: " << waypoint_next_ << std::endl;
     std::cout << std::endl;
 
-    return waypoint_current_;
+    return waypoint_prev_;
 }
 
 //----------------------------------------------------------------------

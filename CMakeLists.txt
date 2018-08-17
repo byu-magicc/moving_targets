@@ -116,7 +116,7 @@ add_library(TargetMotion SHARED
   src/path_manager/half_plane_manager.cpp 
 	src/path_follower/straight_line.cpp
 	src/path_follower/orbit.cpp
-  src/path_follower/random_walk.cpp)
+  src/path_follower/random_waypoints.cpp)
 
 add_dependencies(TargetMotion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} )

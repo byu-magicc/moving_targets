@@ -28,6 +28,8 @@ namespace motion {
          * @return     whether or not $p \in \mathcal{H}(r, n)$
          */
         bool in_halfplane(const coord_t& p, const coord_t& r, const coord_t& n);
+
+        static constexpr double TOO_FAR = 15;      ///< error threshold for counting current wp as reached
     };
 
 

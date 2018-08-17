@@ -113,7 +113,7 @@ void TargetMotion::loadTrajectory() {
   // velocity
   v_ = nh_.param<float>("v", 1);
 
-  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse", "random_walk"};
+  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse", "random_waypoints"};
 
 
   // Orbit trajectory
@@ -126,10 +126,10 @@ void TargetMotion::loadTrajectory() {
     motion::coord_t origin{pose_init_.pos.x,pose_init_.pos.y, pose_init_.pos.z};
 
     // create follower
-    follower_ = std::make_shared<motion::RandomWalk>(origin, waypoints_init_);
+    follower_ = std::make_shared<motion::RandomWaypoints>(origin, waypoints_init_);
 
     // Pick a random initial condition
-    motion::coord_t pos0 = std::static_pointer_cast<motion::RandomWalk>(follower_)->initialize();
+    motion::coord_t pos0 = std::static_pointer_cast<motion::RandomWaypoints>(follower_)->initialize();
     pose_init_ = math::Pose(std::get<0>(pos0), std::get<1>(pos0), std::get<2>(pos0), 0, 0, 0);
     model_->SetWorldPose(pose_init_);
   } else {
@@ -156,7 +156,7 @@ void TargetMotion::loadTrajectory() {
 void TargetMotion::loadManager() {
 
   // manager type 
-  bool half_plane = nh_.param<bool>("half_plane_manager", false);
+  bool half_plane = nh_.param<bool>("half_plane", false);
 
   if (half_plane) {
     manager_ = std::unique_ptr<motion::HalfPlaneManager>(new motion::HalfPlaneManager());
@@ -165,7 +165,7 @@ void TargetMotion::loadManager() {
   }
 
   // goToPoint only goes to point once
-  // random walk manages its own waypoints
+  // random waypoints manages its own waypoints
   bool should_cycle = (params_.traj != 0 && params_.traj != 4);
   manager_->set_cycling(should_cycle);
 }
@@ -228,7 +228,7 @@ void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float
   if (params_.traj == 2)
     commands = follower_->orbit_follower(waypoints_curr_[0], pos, yaw);
   else if (params_.traj == 4)
-    commands = follower_->random_walk(waypoints_curr_, wp_reached, pos, yaw);
+    commands = follower_->randomize(waypoints_curr_, wp_reached, pos, yaw);
   else
     commands = follower_->line_follower(waypoints_curr_[0], waypoints_curr_[1]-waypoints_curr_[0], pos, yaw);
 

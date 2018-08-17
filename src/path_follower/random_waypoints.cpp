@@ -1,15 +1,15 @@
 /**
- * @file random_walk.cpp
+ * @file random_waypoints.cpp
  * @author Parker Lusk <parkerclusk@gmail.com>
  */
 
-#include "path_follower/random_walk.h"
+#include "path_follower/random_waypoints.h"
 
 #include <random>
 
 namespace motion {
 
-RandomWalk::RandomWalk(const coord_t& origin, const waypoints_t& bbox) {
+RandomWaypoints::RandomWaypoints(const coord_t& origin, const waypoints_t& bbox) {
     // initialize straight line follower
     straight_line_ = std::unique_ptr<motion::StraightLine>(new motion::StraightLine());
 
@@ -30,7 +30,7 @@ RandomWalk::RandomWalk(const coord_t& origin, const waypoints_t& bbox) {
 
 //----------------------------------------------------------------------
 
-FollowerCommands RandomWalk::random_walk(waypoints_t& waypoints, bool wp_reached, const coord_t& p, const double& chi) {
+FollowerCommands RandomWaypoints::randomize(waypoints_t& waypoints, bool wp_reached, const coord_t& p, const double& chi) {
 
     // calculate distance error
     auto wp_diff = waypoint_curr_-waypoint_prev_;
@@ -43,9 +43,9 @@ FollowerCommands RandomWalk::random_walk(waypoints_t& waypoints, bool wp_reached
         waypoint_curr_ = waypoint_next_;
         waypoint_next_ = sample_waypoint();
 
-        std::cout << std::endl;
-        std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
-        std::cout << std::endl;
+        // std::cout << std::endl;
+        // std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
+        // std::cout << std::endl;
     }
 
     if (wp_reached || waypoints.size() < 3) {
@@ -60,24 +60,24 @@ FollowerCommands RandomWalk::random_walk(waypoints_t& waypoints, bool wp_reached
 
 //----------------------------------------------------------------------
 
-void RandomWalk::set_parameters(const FollowerParams& params) {
+void RandomWaypoints::set_parameters(const FollowerParams& params) {
     straight_line_->set_parameters(params);
 }
 
 //----------------------------------------------------------------------
 
-coord_t RandomWalk::initialize() {
+coord_t RandomWaypoints::initialize() {
 
     // sample two waypoints
     waypoint_prev_ = sample_waypoint();
     waypoint_curr_ = sample_waypoint();
     waypoint_next_ = sample_waypoint();
 
-    std::cout << std::endl;
-    std::cout << "WP Previous (init): " << waypoint_prev_ << std::endl;
-    std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
-    std::cout << "WP Next Goal: " << waypoint_next_ << std::endl;
-    std::cout << std::endl;
+    // std::cout << std::endl;
+    // std::cout << "WP Previous (init): " << waypoint_prev_ << std::endl;
+    // std::cout << "WP Current Goal: " << waypoint_curr_ << std::endl;
+    // std::cout << "WP Next Goal: " << waypoint_next_ << std::endl;
+    // std::cout << std::endl;
 
     return waypoint_prev_;
 }
@@ -86,7 +86,7 @@ coord_t RandomWalk::initialize() {
 // Private Methods
 //----------------------------------------------------------------------
 
-coord_t RandomWalk::sample_waypoint() {
+coord_t RandomWaypoints::sample_waypoint() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> X(min_x_, max_x_);

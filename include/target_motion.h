@@ -27,7 +27,7 @@
 #include "path_follower/base_follower.h"
 #include "path_follower/straight_line.h"
 #include "path_follower/orbit.h"
-#include "path_follower/random_walk.h"
+#include "path_follower/random_waypoints.h"
 
 #include "moving_targets/MovingTargets.h"
 

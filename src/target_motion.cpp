@@ -58,6 +58,10 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   // Load path manager
   loadManager();
 
+  // Do we want to collide with other objects?
+  bool collide = nh_.param<bool>("collisions", true);
+  if (!collide) turnOffCollisions();
+
   // Listen to the update event. This event is broadcast every simulation iteration.
   updateConnection_ = event::Events::ConnectWorldUpdateBegin(boost::bind(&TargetMotion::OnUpdate, this, _1));
 }
@@ -399,6 +403,18 @@ void TargetMotion::PublishState() {
   odom.twist.twist.angular.y    = model_->GetRelativeAngularVel().y;
   odom.twist.twist.angular.z    = model_->GetRelativeAngularVel().z;
   state_.publish(odom);
+}
+
+// ------------------------------------------------------------------------
+
+void TargetMotion::turnOffCollisions() {
+  auto links = model_->GetLinks();
+
+  // for each link in this model, turn off collisions!
+  for (auto&& l : links) {
+    l->SetCollideMode("none");
+  }
+
 }
 
 }

@@ -43,7 +43,8 @@ The waypoints param used for defining the trajectory will be relative to this st
 | waypoints_z     | x-coordinate waypoints relative to starting position. First element must be 0.                     | float array |
 | lambda          | The direction for circular orbit. The possible values are -1 (counter-clockwise) and 1 (clockwise).| int         |
 | radius          | The radius of the orbit.                                                                           | float       |
-| half_plane      | Uses the more sophisticated half-plane path manager (Algorithm 5, p191, UAVBook)                   | bool        |
+| half_plane      | Uses the more sophisticated half-plane path manager (Algorithm 5, p191, UAVBook) (default: false)  | bool        |
+| collisions      | Turn off collisions for the agent so it can't run into things and be knocked down (default: true)  | bool        |
 
 
 ### goToPoint ###
@@ -127,13 +128,14 @@ Note that even the starting position of the mover is randomized within this boun
     <rosparam param="waypoints_y">[0, 0]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
     <param name="half_plane" type="bool" value="true"/>
+    <param name="collisions" type="bool" value="false"/>
     <rosparam param="waypoints_x">[-5, 5]</rosparam>
     <rosparam param="waypoints_y">[-5, 5]</rosparam>
     <rosparam param="waypoints_z">[0, 0]</rosparam>
 </group>
 ```
 
-**Note**: For best performance with random waypoints mover, use the `half_plane` path manager.
+**Note**: For best performance with random waypoints mover, use the `half_plane` path manager with no `collisions` (especially with lots of random movers!).
 
 ## Use Plugin ##
 

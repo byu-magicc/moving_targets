@@ -100,6 +100,7 @@ namespace gazebo
     void loadTrajectory();
     void loadManager();
 
+    void turnOffCollisions();
   };
 
   // Register this plugin with the simulator

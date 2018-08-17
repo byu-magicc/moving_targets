@@ -16,9 +16,10 @@
 #include <nav_msgs/Odometry.h>
 
 #include "path_manager/radius_manager.h"
+#include "path_follower/base_follower.h"
 #include "path_follower/straight_line.h"
 #include "path_follower/orbit.h"
-#include "path_follower/base_follower.h"
+#include "path_follower/random_walk.h"
 #include "moving_targets/MovingTargets.h"
 #include "waypoint.h"
 

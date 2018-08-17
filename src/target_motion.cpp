@@ -1,7 +1,6 @@
 #include "target_motion.h"
 
-namespace gazebo
-{
+namespace gazebo {
 
 // void TargetMotion::Load(rendering::VisualPtr _parent, sdf::ElementPtr _sdf)
 // {
@@ -105,27 +104,39 @@ void TargetMotion::loadTrajectory() {
   params_.traj = nh_.param<int>("trajectory_type", 0);
 
   // Orbit circle parameters
-  params_.row = nh_.param<float>("radius", 2);
+  params_.rho = nh_.param<float>("radius", 2);
   params_.lambda = nh_.param<float>("lambda", 1);
 
   // velocity
   v_ = nh_.param<float>("v", 1);
 
-  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse"};
+  std::vector<std::string> traj_types = {"goToPoint", "waypoints", "circle", "ellipse", "random_walk"};
 
 
   // Orbit trajectory
-  if (params_.traj == 2)
+  if (params_.traj == 2) {
     follower_ = std::make_shared<motion::Orbit>();
-  else if (params_.traj == 0 || params_.traj == 1 || params_.traj == 3)
+  } else if (params_.traj == 0 || params_.traj == 1 || params_.traj == 3) {
     follower_ = std::make_shared<motion::StraightLine>();
-  else
+  } else if (params_.traj == 4) {
+    // origin of bbox
+    motion::coord_t origin{pose_init_.pos.x,pose_init_.pos.y, pose_init_.pos.z};
+
+    // create follower
+    follower_ = std::make_shared<motion::RandomWalk>(origin, waypoints_init_);
+
+    // Pick a random initial condition
+    motion::coord_t pos0 = std::static_pointer_cast<motion::RandomWalk>(follower_)->initialize();
+    pose_init_ = math::Pose(std::get<0>(pos0), std::get<1>(pos0), std::get<2>(pos0), 0, 0, 0);
+    model_->SetWorldPose(pose_init_);
+  } else {
     gzerr << "[TargetMotion] Trajectory type " << params_.traj << " is undefined.\n";
+  }
   
   gzmsg << "[TargetMotion] Generated a " << traj_types[params_.traj] << " trajectory for " << model_->GetName() << ".\n";
 
   gzmsg << "params: " << "\n\tk_orbit:      " << params_.k_orbit
-                      << "\n\trow:          " << params_.row
+                      << "\n\trho:          " << params_.rho
                       << "\n\tlambda:       " << params_.lambda
                       << "\n\tk_path:       " << params_.k_path
                       << "\n\tchi_infinity: " << params_.chi_infinity << std::endl;
@@ -194,10 +205,12 @@ void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float
   motion::FollowerCommands commands;
   if (params_.traj == 2)
     commands = follower_->orbit_follower(waypoints_curr_[0], pos, yaw);
+  else if (params_.traj == 4)
+    commands = follower_->random_walk(pos, yaw);
   else
     commands = follower_->line_follower(waypoints_curr_[0], waypoints_curr_[1]-waypoints_curr_[0], pos, yaw);
 
-  // calculate heading and altitude errors
+  // calculate altitude and heading errors
   h_er = std::get<2>(pos) - commands.h_c;
   chi_er =  yaw - commands.chi_c;
 

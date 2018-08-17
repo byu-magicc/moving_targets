@@ -7,47 +7,40 @@
 
 namespace motion {
 
-	// The two commands
-	struct FollowerCommands {
+    // The two commands
+    struct FollowerCommands {
 
-		float chi_c;   // Heading commands
-		float h_c;     // Altitude commands
+        float chi_c;   // Heading commands
+        float h_c;     // Altitude commands
 
-	};
+    };
 
-	struct FollowerParams {
+    struct FollowerParams {
 
-		// Orbit follower parameters
-		float k_orbit;   // Gain
-		float row;       // Orbit radius
-		float lambda;    // Direction of orbit
+        // Orbit follower parameters
+        float k_orbit;   // Gain
+        float rho;       // Orbit radius
+        float lambda;    // Direction of orbit
 
-		// Straight Line follower parameters
-		float k_path;        // Gain
-		float chi_infinity;  // Gain
+        // Straight Line follower parameters
+        float k_path;        // Gain
+        float chi_infinity;  // Gain
 
-		// trajectory
-		int traj;
+        // trajectory
+        int traj;
 
-	};
+    };
 
+    class BaseFollower {
 
-	class BaseFollower {
+    public:
 
-	public:
+        virtual FollowerCommands line_follower(const coord_t& r, const coord_t& q, const coord_t& p, const double& chi) {}
 
-		virtual FollowerCommands line_follower(const coord_t& r, const coord_t& q, const coord_t& p, const double& chi) {}
+        virtual FollowerCommands orbit_follower(const coord_t& c, const coord_t& p, const double chi) {}
 
-		virtual FollowerCommands orbit_follower(const coord_t& c, const coord_t& p, const double chi) {};
+        virtual FollowerCommands random_walk(const coord_t& p, const double& chi) {}
 
-		virtual void set_parameters(const FollowerParams& params) = 0;
-
-	private:
-
-
-
-	};
-
-
-
+        virtual void set_parameters(const FollowerParams& params) = 0;
+    };
 }

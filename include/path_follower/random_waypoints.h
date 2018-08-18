@@ -19,7 +19,7 @@ namespace motion {
 
     public:
 
-        RandomWaypoints(const coord_t& origin, const waypoints_t& bbox);
+        RandomWaypoints(const waypoints_t& bbox);
        
         /**
          * @brief      Generate commands for random waypoints
@@ -52,8 +52,6 @@ namespace motion {
 
         double min_x_, min_y_, min_z_;  ///< minimum parameter of uniform distribution
         double max_x_, max_y_, max_z_;  ///< maximum parameter of uniform distribution
-
-        coord_t origin_;                ///< origin of bounding box
 
         /**
          * @brief      Sample a waypoint from 3 indep uniform distributions

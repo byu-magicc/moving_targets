@@ -9,7 +9,7 @@
 
 namespace motion {
 
-RandomWaypoints::RandomWaypoints(const coord_t& origin, const waypoints_t& bbox) {
+RandomWaypoints::RandomWaypoints(const waypoints_t& bbox) {
     // initialize straight line follower
     straight_line_ = std::unique_ptr<motion::StraightLine>(new motion::StraightLine());
 
@@ -23,9 +23,6 @@ RandomWaypoints::RandomWaypoints(const coord_t& origin, const waypoints_t& bbox)
     max_x_ = std::get<0>(bbox[1]);
     max_y_ = std::get<1>(bbox[1]);
     max_z_ = std::get<2>(bbox[1]);
-
-    // origin of bounding box -- used to shift sampled waypoints
-    origin_ = origin;
 }
 
 //----------------------------------------------------------------------
@@ -94,7 +91,8 @@ coord_t RandomWaypoints::sample_waypoint() {
     std::uniform_real_distribution<> Z(min_z_, max_z_);
 
     // shifted random waypoint based on origin
-    return (coord_t(X(gen), Y(gen), Z(gen)) + origin_);
+    // (already shifted when waypoints were created in main)
+    return (coord_t(X(gen), Y(gen), Z(gen)));
 }
 
 }

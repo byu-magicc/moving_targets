@@ -126,11 +126,7 @@ void TargetMotion::loadTrajectory() {
   } else if (params_.traj == 0 || params_.traj == 1 || params_.traj == 3) {
     follower_ = std::make_shared<motion::StraightLine>();
   } else if (params_.traj == 4) {
-    // origin of bbox
-    motion::coord_t origin{pose_init_.pos.x,pose_init_.pos.y, pose_init_.pos.z};
-
-    // create follower
-    follower_ = std::make_shared<motion::RandomWaypoints>(origin, waypoints_init_);
+    follower_ = std::make_shared<motion::RandomWaypoints>(waypoints_init_);
 
     // Pick a random initial condition
     motion::coord_t pos0 = std::static_pointer_cast<motion::RandomWaypoints>(follower_)->initialize();

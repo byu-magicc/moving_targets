@@ -111,10 +111,12 @@ include_directories(include
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES})
 add_library(TargetMotion SHARED 
-	src/target_motion.cpp 
-	src/path_manager/radius_manager.cpp 
+	src/target_motion.cpp
+  src/path_manager/radius_manager.cpp 
+  src/path_manager/half_plane_manager.cpp 
 	src/path_follower/straight_line.cpp
-	src/path_follower/orbit.cpp)
+	src/path_follower/orbit.cpp
+  src/path_follower/random_waypoints.cpp)
 
 add_dependencies(TargetMotion ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(TargetMotion ${catkin_LIBRARIES} ${GAZEBO_LIBRARIES} )

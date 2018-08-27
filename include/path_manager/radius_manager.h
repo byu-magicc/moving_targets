@@ -1,28 +1,22 @@
 #pragma once
 
 #include "waypoint.h"
+#include "path_manager/base_manager.h"
 
 namespace motion {
 
-	class RadiusManager {
+    class RadiusManager : public BaseManager
+    {
+    public:
+        RadiusManager() = default;
 
-	public:
+        bool manage_waypoints(const coord_t& pos, waypoints_t& waypoints, float& distance) override;
 
-		RadiusManager() = default;
-
-		RadiusManager(double radius) : radius_(radius) {}
-
-		float manage_waypoints(const coord_t& pos, waypoints_t& waypoints, int traj);
-
-	private:
-
-		// If the agent is within this distance to the waypoint
-		// Then the agent will start moving to the next waypoint
-		float radius_ = 1;
-
-
-
-	};
+    private:
+        // If the agent is within this distance to the waypoint
+        // Then the agent will start moving to the next waypoint
+        float radius_ = 1;
+    };
 
 
 }

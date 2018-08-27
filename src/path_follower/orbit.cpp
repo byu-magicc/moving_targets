@@ -24,7 +24,7 @@ FollowerCommands Orbit::orbit_follower(const coord_t& c, const coord_t& p, const
 		chi_q-= 2*M_PI;
 	}
 
-	commands.chi_c = chi_q + lambda_*(M_PI/2 + atan(k_orbit_*(d-row_)/row_));
+	commands.chi_c = chi_q + lambda_*(M_PI/2 + atan(k_orbit_*(d-rho_)/rho_));
 
 	return commands;
 
@@ -34,7 +34,7 @@ FollowerCommands Orbit::orbit_follower(const coord_t& c, const coord_t& p, const
 
 void Orbit::set_parameters(const FollowerParams& params) {
 
-	row_ = params.row;
+	rho_ = params.rho;
 	lambda_ = params.lambda;
 
 }

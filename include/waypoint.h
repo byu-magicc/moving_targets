@@ -11,7 +11,7 @@ namespace motion {
     typedef std::vector<coord_t>                waypoints_t;
 
     // calculate the magnitude of a waypoint
-    inline double get_magnitude(coord_t& l) {
+    inline double get_magnitude(coord_t l) {
         return sqrt(pow(std::get<0>(l),2) + pow(std::get<1>(l),2)+pow(std::get<2>(l),2));
     }
 }

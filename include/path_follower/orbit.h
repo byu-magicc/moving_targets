@@ -31,7 +31,7 @@ namespace motion {
 
 		// Gains
 		float k_orbit_ = 2;
-		float row_ = 1;
+		float rho_ = 1;
 		float lambda_ = 1;
 
 	};

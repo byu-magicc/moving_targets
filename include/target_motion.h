@@ -7,7 +7,6 @@
 #include <boost/bind.hpp>
 
 #include <gazebo/gazebo.hh>
-#include <gazebo/math/Matrix3.hh>
 #include <gazebo/physics/physics.hh>
 #include <gazebo/common/common.hh>
 // #include <gazebo/rendering/rendering.hh>
@@ -19,6 +18,8 @@
 #include <Eigen/Dense>
 
 #include "waypoint.h"
+
+#include "gz_compat.h"
 
 #include "path_manager/base_manager.h"
 #include "path_manager/radius_manager.h"
@@ -46,7 +47,7 @@ namespace gazebo
 
     void getCommandError(float& chi_er, float& h_er, float& yaw, float& distance);
 
-    void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel);
+    void getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, GazeboVector& linear_vel, GazeboVector& angular_vel);
 
     double getValueFromSdf(std::string name);
 
@@ -79,7 +80,7 @@ namespace gazebo
     double simTime_d1_ = 0;      // Time step (s)
     float update_rate_;          //
     float v_;                    // Linear velocity (m/s)
-    math::Pose pose_init_;       // Initial pose of agent.
+    GazeboPose pose_init_;       // Initial pose of agent.
     float acceleration_;
 
     // Used to draw waypoints

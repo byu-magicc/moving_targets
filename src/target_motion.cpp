@@ -50,7 +50,7 @@ void TargetMotion::Load(physics::ModelPtr _parent, sdf::ElementPtr _sdf)
   altitudePID_.Init(kpZ, 0, kdZ, 0,0, maxVZ, -maxVZ);
 
   // Capture the initial pose of the mover
-  pose_init_ = model_->GetWorldPose();
+  pose_init_ = GZ_COMPAT_GET_WORLD_POSE(model_);
 
   // Load trajectory
   loadTrajectory();
@@ -99,9 +99,10 @@ void TargetMotion::loadTrajectory() {
   for (int i=0; i<waypoints_x.size(); i++)
   {
     // translate body-relative waypoints to the world frame
-    motion::coord_t waypoint(pose_init_.pos.x + waypoints_x[i],
-                             pose_init_.pos.y + waypoints_y[i],
-                             pose_init_.pos.z + waypoints_z[i]);
+    GazeboVector pos = GZ_COMPAT_GET_POS(pose_init_);
+    motion::coord_t waypoint(GZ_COMPAT_GET_X(pos) + waypoints_x[i],
+                             GZ_COMPAT_GET_Y(pos) + waypoints_y[i],
+                             GZ_COMPAT_GET_Z(pos) + waypoints_z[i]);
     waypoints_init_.push_back(waypoint);
 
     gzmsg << "\t" << waypoints_init_[i] << std::endl;
@@ -130,7 +131,7 @@ void TargetMotion::loadTrajectory() {
 
     // Pick a random initial condition
     motion::coord_t pos0 = std::static_pointer_cast<motion::RandomWaypoints>(follower_)->initialize();
-    pose_init_ = math::Pose(std::get<0>(pos0), std::get<1>(pos0), std::get<2>(pos0), 0, 0, 0);
+    pose_init_ = GazeboPose(std::get<0>(pos0), std::get<1>(pos0), std::get<2>(pos0), 0, 0, 0);
     model_->SetWorldPose(pose_init_);
   } else {
     gzerr << "[TargetMotion] Trajectory type " << params_.traj << " is undefined.\n";
@@ -181,8 +182,8 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
   if (dt > 1.0/update_rate_ || simTime_d1_ == 0)
   {  
    
-    math::Vector3 linear_vel(0, 0, 0); 
-    math::Vector3 angular_vel(0, 0, 0);
+    GazeboVector linear_vel(0, 0, 0); 
+    GazeboVector angular_vel(0, 0, 0);
 
     float chi_er, h_er, yaw, distance;
 
@@ -208,20 +209,22 @@ void TargetMotion::OnUpdate(const common::UpdateInfo& _info)
 void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float& distance) {
 
   // Get world pose
-  math::Pose pose = model_->GetWorldPose();
+  GazeboPose pose = GZ_COMPAT_GET_WORLD_POSE(model_);
 
   // Get position and pack into type motion::coord_t
-  math::Vector3 position = pose.pos;
-  motion::coord_t pos(position.x, position.y, position.z);
+  GazeboVector position = GZ_COMPAT_GET_POS(pose);
+  motion::coord_t pos(GZ_COMPAT_GET_X(position), 
+                      GZ_COMPAT_GET_Y(position),
+                      GZ_COMPAT_GET_Z(position));
 
   // Get Euler angles
-  math::Vector3 rot = pose.rot.GetAsEuler();
+  GazeboVector rot = GZ_COMPAT_GET_EULER(GZ_COMPAT_GET_ROT(pose));
 
   // Manage waypoints
   bool wp_reached = manager_->manage_waypoints(pos, waypoints_curr_, distance);
 
   // Heading
-  yaw = rot.z;
+  yaw = GZ_COMPAT_GET_Z(rot);
 
   // Get heading and altitude commands
   motion::FollowerCommands commands;
@@ -240,7 +243,7 @@ void TargetMotion::getCommandError(float& chi_er, float& h_er, float& yaw, float
 
 // ------------------------------------------------------------------------
 
-void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, math::Vector3& linear_vel, math::Vector3& angular_vel)
+void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er, double h_er, double yaw, double distance, double dt, GazeboVector& linear_vel, GazeboVector& angular_vel)
 {
 
   //
@@ -259,10 +262,10 @@ void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er
   //
 
   // linear velocity command
-  math::Vector3 vel (v_, 0, vz);
+  GazeboVector vel (v_, 0, vz);
 
   // Rotation Matrix
-  math::Matrix3 rotz(cos(yaw), -sin(yaw), 0.0,
+  GazeboMatrix rotz(cos(yaw), -sin(yaw), 0.0,
                      sin(yaw),  cos(yaw), 0.0,
                      0.0,       0.0,      1.0);  
 
@@ -270,7 +273,7 @@ void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er
   linear_vel = rotz*vel;
 
   // Get angular vel
-  angular_vel = math::Vector3(0, 0, wz);
+  angular_vel = GazeboVector(0, 0, wz);
 
 
   float scale;
@@ -319,7 +322,7 @@ void TargetMotion::getVelCommands(const common::UpdateInfo& _info, double chi_er
 //   for (int i = 0; i < waypoints.size(); i++) {
 
 //     dynamic_lines_->AddPoint(
-//       math::Vector3(
+//       GazeboVector(
 //         std::get<0>(waypoints[i]), 
 //         std::get<1>(waypoints[i]), 
 //         std::get<2>(waypoints[i]))
@@ -381,23 +384,31 @@ void TargetMotion::PublishState() {
 
   // publish mover's state odometry
   nav_msgs::Odometry odom;
-  odom.header.stamp.sec = model_->GetWorld()->GetSimTime().sec;
-  odom.header.stamp.nsec = model_->GetWorld()->GetSimTime().nsec;
+  odom.header.stamp.sec = GZ_COMPAT_GET_SIM_TIME(model_->GetWorld()).sec;
+  odom.header.stamp.nsec = GZ_COMPAT_GET_SIM_TIME(model_->GetWorld()).nsec;
   odom.header.frame_id = "map";
   odom.child_frame_id = "target_" + model_->GetName();
-  odom.pose.pose.position.x     = model_->GetWorldPose().pos.x;
-  odom.pose.pose.position.y     = model_->GetWorldPose().pos.y;
-  odom.pose.pose.position.z     = model_->GetWorldPose().pos.z;
-  odom.pose.pose.orientation.w  = model_->GetWorldPose().rot.w;
-  odom.pose.pose.orientation.x  = model_->GetWorldPose().rot.x;
-  odom.pose.pose.orientation.y  = model_->GetWorldPose().rot.y;
-  odom.pose.pose.orientation.z  = model_->GetWorldPose().rot.z;
-  odom.twist.twist.linear.x     = model_->GetRelativeLinearVel().x;
-  odom.twist.twist.linear.y     = model_->GetRelativeLinearVel().y;
-  odom.twist.twist.linear.z     = model_->GetRelativeLinearVel().z;
-  odom.twist.twist.angular.x    = model_->GetRelativeAngularVel().x;
-  odom.twist.twist.angular.y    = model_->GetRelativeAngularVel().y;
-  odom.twist.twist.angular.z    = model_->GetRelativeAngularVel().z;
+
+  GazeboPose pose = GZ_COMPAT_GET_WORLD_POSE(model_);
+  GazeboVector pos = GZ_COMPAT_GET_POS(pose);
+  GazeboQuaternion quat = GZ_COMPAT_GET_ROT(pose);
+  odom.pose.pose.position.x     = GZ_COMPAT_GET_X(pos);
+  odom.pose.pose.position.y     = GZ_COMPAT_GET_Y(pos);
+  odom.pose.pose.position.z     = GZ_COMPAT_GET_Z(pos);
+  odom.pose.pose.orientation.w  = GZ_COMPAT_GET_W(quat);
+  odom.pose.pose.orientation.x  = GZ_COMPAT_GET_X(quat);
+  odom.pose.pose.orientation.y  = GZ_COMPAT_GET_Y(quat);
+  odom.pose.pose.orientation.z  = GZ_COMPAT_GET_Z(quat);
+
+  GazeboVector linvel = GZ_COMPAT_GET_RELATIVE_LINEAR_VEL(model_);
+  GazeboVector angvel = GZ_COMPAT_GET_RELATIVE_ANGULAR_VEL(model_);
+
+  odom.twist.twist.linear.x     = GZ_COMPAT_GET_X(linvel);
+  odom.twist.twist.linear.y     = GZ_COMPAT_GET_Y(linvel);
+  odom.twist.twist.linear.z     = GZ_COMPAT_GET_Z(linvel);
+  odom.twist.twist.angular.x    = GZ_COMPAT_GET_X(angvel);
+  odom.twist.twist.angular.y    = GZ_COMPAT_GET_Y(angvel);
+  odom.twist.twist.angular.z    = GZ_COMPAT_GET_Z(angvel);
   state_.publish(odom);
 }
 
